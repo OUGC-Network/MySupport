@@ -228,3 +228,7 @@ $l['mysupport_ago'] = "ago";
 
 $l['update'] = "Update";
 $l['close_options'] = "Close Options";
+
+$l['filter_by'] = 'Filter by';
+$l['status'] = 'Status';
+$l['mysupport_thread_options'] = 'Support Options';

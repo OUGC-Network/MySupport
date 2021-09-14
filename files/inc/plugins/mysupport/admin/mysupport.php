@@ -501,7 +501,7 @@ function generate_mysupport_tabs($selected)
 	$sub_tabs['categories'] = array(
 		'title' => $lang->categories,
 		'link' => "index.php?module=config-mysupport&amp;action=categories",
-		'description' => $lang->categories_nav
+		'description' => ''
 	);
 	$sub_tabs['settings'] = array(
 		'title' => $lang->mysupport_settings,

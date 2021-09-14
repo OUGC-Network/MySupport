@@ -661,7 +661,7 @@ function _db_columns()
 			'mysupport' => "INT(1) NOT NULL DEFAULT '0'",
 			'mysupportmove' => "INT(1) NOT NULL DEFAULT '1'",
 			'mysupportdenial' => "INT(1) NOT NULL DEFAULT '1'",
-			'technicalthreads' => "INT(5) NOT NULL DEFAULT '0'",
+			'technicalthreads' => "INT(5) NOT NULL DEFAULT '0'", // counter stat ?
 			'allowsolvestatus' => "INT(1) NOT NULL DEFAULT '1'",
 			'allowtechnicalstatus' => "INT(1) NOT NULL DEFAULT '1'",
 			'allowbestanswerstatus' => "INT(1) NOT NULL DEFAULT '1'",
@@ -691,11 +691,8 @@ function _db_columns()
 		],
 		'usergroups'	=> [
 			'canmarksolved' => "INT(1) NOT NULL DEFAULT '1'",
-			//'canmarktechnical' => "INT(1) NOT NULL DEFAULT '0'",
 			'canseetechnotice' => "INT(1) NOT NULL DEFAULT '1'",
-			//'canassign' => "INT(1) NOT NULL DEFAULT '0'",
 			'canbeassigned' => "INT(1) NOT NULL DEFAULT '1'",
-			//'cansetpriorities' => "INT(1) NOT NULL DEFAULT '0'",
 			'canseepriorities' => "INT(1) NOT NULL DEFAULT '0'",
 			'canmarkbestanswer' => "INT(1) NOT NULL DEFAULT '1'",
 			'canmarkonhold' => "INT(1) NOT NULL DEFAULT '1'",

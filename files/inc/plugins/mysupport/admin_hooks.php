@@ -224,7 +224,13 @@ function admin_formcontainer_output_row(&$args)
 		$form_container->output_row($lang->mysupport, "", "<div class=\"forum_settings_bit\">".implode("</div><div class=\"forum_settings_bit\">", $mysupport_options)."</div>");
 	}
 
-	if($args['title'] == $lang->misc_options && $lang->misc_options && $mybb->get_input('module', \MyBB::INPUT_STRING) == 'forum-management' && $mybb->get_input('action', \MyBB::INPUT_STRING) == 'edit' && !$done)
+	if(
+		!empty($lang->misc_options) &&
+		$args['title'] == $lang->misc_options &&
+		$mybb->get_input('module', \MyBB::INPUT_STRING) == 'forum-management' &&
+		$mybb->get_input('action', \MyBB::INPUT_STRING) == 'edit' &&
+		!$done
+		)
 	{
 		$done = true;
 
