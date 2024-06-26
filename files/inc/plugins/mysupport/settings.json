@@ -1,0 +1,192 @@
+{
+  "displaytype": {
+    "optionscode": "radio",
+    "options": [
+      "image",
+      "text"
+    ],
+    "value": "image"
+  },
+  "displaytypeuserchange": {
+    "optionscode": "groupselect",
+    "value": -1
+  },
+  "displayto": {
+    "optionscode": "radio",
+    "options": [
+      "all",
+      "canmas",
+      "canmasauthor"
+    ],
+    "value": "all"
+  },
+  "enablesolvedstatus": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "closewhensolved": {
+    "optionscode": "radio",
+    "options": [
+      "always",
+      "option",
+      "never"
+    ],
+    "value": "never"
+  },
+  "moveredirect": {
+    "optionscode": "select",
+    "options": [
+      "none",
+      1,
+      2,
+      3,
+      5,
+      10,
+      28,
+      "forever"
+    ],
+    "value": 0
+  },
+  "bumpnotice": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "enableonhold": {
+    "optionscode": "onoff",
+    "value": 1
+  },
+  "bestanswerrep": {
+    "optionscode": "numeric",
+    "value": 1
+  },
+  "enabletechnical": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "hidetechnical": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "technicalnotice": {
+    "optionscode": "radio",
+    "options": [
+      "off",
+      "global",
+      "specific"
+    ],
+    "value": "global"
+  },
+  "enableassign": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "assignpm": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "assignsubscribe": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "enablepriorities": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "enablenotsupportthread": {
+    "optionscode": "radio",
+    "options": [
+      0,
+      1,
+      2
+    ],
+    "value": 0
+  },
+  "enablesupportdenial": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "closewhendenied": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "modlog": {
+    "optionscode": "checkbox",
+    "options": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "value": "0,1,2,3,4,5,6,7,8,9,10,11,12,13"
+  },
+  "highlightstaffposts": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "threadlist": {
+    "optionscode": "onoff",
+    "value": 1
+  },
+  "stats": {
+    "optionscode": "onoff",
+    "value": 1
+  },
+  "relativetime": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "taskautosolvetime": {
+    "optionscode": "select",
+    "options": [
+      0,
+      604800,
+      1209600,
+      1814400,
+      2419200,
+      4838400,
+      7257600
+    ],
+    "value": 2419200
+  },
+  "taskbackup": {
+    "optionscode": "select",
+    "options": [
+      0,
+      86400,
+      259200,
+      604800
+    ],
+    "value": 604800
+  },
+  "pointssystem": {
+    "optionscode": "select",
+    "options": [
+      "myps",
+      "newpoints",
+      "other",
+      "none"
+    ],
+    "value": "none"
+  },
+  "pointssystemname": {
+    "optionscode": "text",
+    "value": ""
+  },
+  "pointssystemcolumn": {
+    "optionscode": "text",
+    "value": ""
+  },
+  "bestanswerpoints": {
+    "optionscode": "text",
+    "value": ""
+  }
+}

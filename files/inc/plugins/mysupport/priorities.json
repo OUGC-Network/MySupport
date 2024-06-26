@@ -1,0 +1,14 @@
+{
+  "Low": {
+    "extra": "ADCBE7"
+  },
+  "Normal": {
+    "extra": "D6ECA6"
+  },
+  "High": {
+    "extra": "FFF6BF"
+  },
+  "Urgent": {
+    "extra": "FFE4E1"
+  }
+}
