@@ -1399,7 +1399,7 @@ function mysupport_change_category($thread_info, $category, $multiple = false)
 		}
 		else
 		{
-			if($thread['prefix'] == 0)
+			if($thread_info['prefix'] == 0)
 			{
 				mysupport_mod_log_action(9, $lang->sprintf($lang->category_change_success_to, $new_category));
 				mysupport_redirect_message($lang->sprintf($lang->category_change_success_to, htmlspecialchars_uni($new_category)));

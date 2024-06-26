@@ -277,7 +277,7 @@ function forumdisplay_thread()
 			if($thread['bestanswer'] != 0)
 			{
 				$post = intval($thread['bestanswer']);
-				$jumpto_bestanswer_url = get_post_link($post, $tid)."#pid".$post;
+				$jumpto_bestanswer_url = get_post_link($post, $thread['tid'])."#pid".$post;
 				$bestanswer_image = "mysupport_bestanswer.gif";
 				$mysupport_bestanswer = eval($templates->render('mysupport_jumpto_bestanswer'));
 			}
@@ -689,7 +689,7 @@ function modcp_start()
 			if(!empty($mysupport_cache['deniedreasons']))
 			{
 				// if there's one or more reasons set, show them in a dropdown
-				foreach($mysupport_cache['deniedreasons'] as $deniedreasons)
+				foreach($mysupport_cache['deniedreasons'] as $deniedreason)
 				{
 					$value = (int)$deniedreason['mid'];
 
@@ -1609,6 +1609,8 @@ function moderation_start()
 		}
 		else
 		{
+            $forum = get_forum($fid);
+
 			$categories = \MySupport\Core\get_categories($forum);
 			if(!array_key_exists($category, $categories) && $category != "-1")
 			{
@@ -1636,7 +1638,7 @@ function newreply_start()
 	{
 		if($mybb->settings['mysupport_bumpnotice'])
 		{
-			if($thread['status'] == 1 && $thread['uid'] != $mybb->user['uid'] && !($mybb->usergroup['canmarksolved'] || is_moderator($forum['fid'], "", $post['uid'])))
+			if($thread['status'] == 1 && $thread['uid'] != $mybb->user['uid'] && !($mybb->usergroup['canmarksolved'] || is_moderator($forum['fid'], "", $post['uid'] ?? 0)))
 			{
 				$mysupport_solved_bump_message = $lang->mysupport_solved_bump_message."\n\n";
 			}
@@ -1720,7 +1722,7 @@ function postbit(&$post)
 					$post['mysupport_bestanswer_highlight'] = " mysupport_bestanswer_highlight";
 				}
 
-				if($mybb->user['uid'] == $thread['uid'] && $mybb->usergroup['canmarkbestanswer'] || is_moderator($fid, 'canmarkbestanswer'))
+				if($mybb->user['uid'] == $thread['uid'] && $mybb->usergroup['canmarkbestanswer'] || is_moderator($forum['fid'], 'canmarkbestanswer'))
 				{
 					if($thread['bestanswer'] == $post['pid'])
 					{
@@ -2646,7 +2648,7 @@ function usercp_start20()
 
 function xmlhttp()
 {
-	global $mybb, $db;
+	global $mybb, $db, $lang;
 
 	if($mybb->get_input('action') != 'mysupport_assign_users')
 	{
@@ -2660,6 +2662,13 @@ function xmlhttp()
 	{
 		exit;
 	}
+
+    $charset = "UTF-8";
+
+    if($lang->settings['charset'])
+    {
+        $charset = $lang->settings['charset'];
+    }
 
 	// Send our headers.
 	header("Content-type: application/json; charset={$charset}");

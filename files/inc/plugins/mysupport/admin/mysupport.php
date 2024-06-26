@@ -24,6 +24,9 @@ if(!defined("IN_MYBB"))
 	exit;
 }
 
+global $cache, $page, $lang, $mybb, $db;
+global $modules_dir_backup, $run_module_backup, $action_file_backup;
+
 $modules_dir = $modules_dir_backup;
 
 $run_module = $run_module_backup;
