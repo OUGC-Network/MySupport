@@ -201,7 +201,7 @@ function updateCache(int $cacheType = CACHE_TYPE_ALL): bool
         'version' => $currentCachedData['version'] ?? '',
         'versionCode' => $currentCachedData['versionCode'] ?? '',
         'priorities' => $currentCachedData['priorities'] ?? [],
-        'deniedreasons' => $currentCachedData['deniedreasons'] ?? [],
+        'deniedReasons' => $currentCachedData['deniedReasons'] ?? [],
     ];
 
     switch ($cacheType) {
@@ -214,7 +214,7 @@ function updateCache(int $cacheType = CACHE_TYPE_ALL): bool
         case CACHE_TYPE_PRIORITIES:
             $dbQuery = $db->simple_select(
                 'mysupport',
-                'name, description, extra',
+                'mid, name, description, extra',
                 "type = 'priority'",
                 ['order_by' => 'name']
             );
@@ -238,10 +238,10 @@ function updateCache(int $cacheType = CACHE_TYPE_ALL): bool
                 ['order_by' => 'name']
             );
 
-            $newCachedData['deniedreasons'] = [];
+            $newCachedData['deniedReasons'] = [];
 
             while ($deniedReasonData = $db->fetch_array($dbQuery)) {
-                $newCachedData['deniedreasons'][(int)$deniedReasonData['mid']] = [
+                $newCachedData['deniedReasons'][(int)$deniedReasonData['mid']] = [
                     'name' => $deniedReasonData['name'],
                     'description' => $deniedReasonData['description'],
                 ];

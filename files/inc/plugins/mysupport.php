@@ -25,6 +25,7 @@ use function MySupport\Admin\pluginInstallation;
 use function MySupport\Admin\pluginIsInstalled;
 use function MySupport\Admin\pluginUninstallation;
 use function MySupport\Core\addHooks;
+use function MySupport\Core\updateCache;
 use function MySupport\MyAlerts\initLocations;
 use function MySupport\MyAlerts\initMyalerts;
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
@@ -94,6 +95,11 @@ function mysupport_is_installed(): bool
 function mysupport_uninstall(): bool
 {
     return pluginUninstallation();
+}
+
+function update_mysupport()
+{
+    updateCache();
 }
 
 // control_object by Zinga Burga from MyBBHacks ( mybbhacks.zingaburga.com )

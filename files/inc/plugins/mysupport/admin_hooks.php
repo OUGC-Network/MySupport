@@ -19,63 +19,66 @@ declare(strict_types=1);
 
 namespace MySupport\AdminHooks;
 
-/*
-function admin_config_plugins_begin01()
-{
-	global $mybb, $lang, $page, $db;
-
-	if($mybb->get_input('action') != 'mysupport')
-	{
-		return;
-	}
-
-	\MySupport\Core\loadLanguage();
-
-	if($mybb->request_method != 'post')
-	{
-		$page->output_confirm_action('index.php?module=config-plugins&amp;action=mysupport', $lang->mysupport_myalerts_confirm);
-	}
-
-	if($mybb->get_input('no') || !\MySupport\MyAlerts\MyAlertsIsIntegrable())
-	{
-		admin_redirect('index.php?module=config-plugins');
-	}
-
-	$availableLocations = \MySupport\MyAlerts\getAvailableLocations();
-
-	$installedLocations = \MySupport\MyAlerts\getInstalledLocations();
-
-	foreach($availableLocations as $availableLocation)
-	{
-		\MySupport\MyAlerts\installLocation($availableLocation);
-	}
-
-	flash_message($lang->mysupport_myalerts_success, 'success');
-
-	admin_redirect('index.php?module=config-plugins');
-}*/
-
 use MyBB;
 
 use function MySupport\Admin\dbDataColumns;
 use function MySupport\Admin\getSettingGroupID;
 use function MySupport\Core\loadLanguage;
 
+use function MySupport\MyAlerts\getAvailableLocations;
+use function MySupport\MyAlerts\installLocation;
+
+use function MySupport\MyAlerts\MyAlertsIsIntegrable;
+
 use const MySupport\Core\ROOT;
+
+function admin_config_plugins_begin01()
+{
+    global $mybb, $lang, $page;
+
+    if ($mybb->get_input('action') !== 'mysupport') {
+        return;
+    }
+
+    loadLanguage();
+
+    if ($mybb->request_method !== 'post') {
+        $page->output_confirm_action(
+            'index.php?module=config-plugins&amp;action=mysupport',
+            $lang->mysupport_myalerts_confirm
+        );
+    }
+
+    if ($mybb->get_input('no') || !MyAlertsIsIntegrable()) {
+        admin_redirect('index.php?module=config-plugins');
+    }
+
+    $availableLocations = getAvailableLocations();
+
+    //$installedLocations = \MySupport\MyAlerts\getInstalledLocations();
+
+    foreach ($availableLocations as $availableLocation) {
+        installLocation($availableLocation);
+    }
+
+    flash_message($lang->mysupport_myalerts_success, 'success');
+
+    admin_redirect('index.php?module=config-plugins');
+}
 
 function admin_config_plugins_deactivate(): bool
 {
     global $mybb, $page;
 
     if (
-        $mybb->get_input('action') != 'deactivate' ||
-        $mybb->get_input('plugin') != 'mysupport' ||
+        $mybb->get_input('action') !== 'deactivate' ||
+        $mybb->get_input('plugin') !== 'mysupport' ||
         !$mybb->get_input('uninstall', MyBB::INPUT_INT)
     ) {
         return false;
     }
 
-    if ($mybb->request_method != 'post') {
+    if ($mybb->request_method !== 'post') {
         $page->output_confirm_action(
             'index.php?module=config-plugins&amp;action=deactivate&amp;uninstall=1&amp;plugin=mysupport'
         );
@@ -90,17 +93,11 @@ function admin_config_plugins_deactivate(): bool
 
 function admin_load(): bool
 {
-    global $modules_dir, $run_module, $action_file, $run_module, $page, $modules_dir_backup, $run_module_backup, $action_file_backup;
+    global $modules_dir, $run_module, $action_file, $page;
 
-    if ($run_module != 'config' || $page->active_action != 'mysupport') {
+    if ($run_module !== 'config' || $page->active_action !== 'mysupport') {
         return false;
     }
-
-    $modules_dir_backup = $modules_dir;
-
-    $run_module_backup = $run_module;
-
-    $action_file_backup = $action_file;
 
     $modules_dir = ROOT;
 
@@ -111,213 +108,198 @@ function admin_load(): bool
     return true;
 }
 
-function admin_config_action_handler(array $actions): array
+function admin_config_action_handler(array $actionObjects): array
 {
-    $actions['mysupport'] = array(
+    $actionObjects['mysupport'] = [
         'active' => 'mysupport',
         'file' => 'mysupport.php'
-    );
+    ];
 
-    return $actions;
+    return $actionObjects;
 }
 
-function admin_config_menu(array $sub_menu): array
+function admin_config_menu(array $subMenuItems): array
 {
     global $lang;
 
-    $lang->load('config_mysupport');
+    loadLanguage();
 
-    $sub_menu[] = array(
+    $subMenuItems[] = [
         'id' => 'mysupport',
         'title' => $lang->mysupport,
         'link' => 'index.php?module=config-mysupport'
-    );
+    ];
 
-    return $sub_menu;
+    return $subMenuItems;
 }
 
-function admin_config_permissions(array $admin_permissions): array
+function admin_config_permissions(array $adminPermissions): array
 {
     global $lang;
 
-    $lang->load('config_mysupport');
+    loadLanguage();
 
-    $admin_permissions['mysupport'] = $lang->can_manage_mysupport;
+    $adminPermissions['mysupport'] = $lang->can_manage_mysupport;
 
-    return $admin_permissions;
+    return $adminPermissions;
 }
 
-function admin_page_output_footer(): bool
+function admin_settings_print_peekers(array $settingPeekers): array
 {
-    global $mybb, $db;
-    // we're viewing the form to change settings but not submitting it
-    if ($mybb->input['action'] == 'change' && $mybb->request_method != 'post') {
-        $gid = getSettingGroupID();
-        // if the settings group we're editing is the same as the gid for the MySupport group, or there's no gid (viewing all settings), echo the peekers
-        if ($mybb->input['gid'] == $gid || !$mybb->input['gid']) {
-            echo '<script type="text/javascript">
-	jQuery(document).ready(function() {
-	loadMySupportPeekers();
-});
-function loadMySupportPeekers()
-{
-	new Peeker($(".setting_mysupport_enabletechnical"), $("#row_setting_mysupport_hidetechnical"), 1, true);
-	new Peeker($(".setting_mysupport_enabletechnical"), $("#row_setting_mysupport_technicalnotice"), 1, true);
-	new Peeker($(".setting_mysupport_enableassign"), $("#row_setting_mysupport_assignpm"), 1, true);
-	new Peeker($(".setting_mysupport_enableassign"), $("#row_setting_mysupport_assignsubscribe"), 1, true);
-	new Peeker($("#setting_mysupport_pointssystem"), $("#row_setting_mysupport_pointssystemname"), /other/, false);
-	new Peeker($("#setting_mysupport_pointssystem"), $("#row_setting_mysupport_pointssystemcolumn"), /other/, false);
-	new Peeker($("#setting_mysupport_pointssystem"), $("#row_setting_mysupport_bestanswerpoints"), /[^none]/, false);
-}
-</script>';
-        }
+    global $mybb;
+
+    if ($mybb->get_input('module') !== 'config-settings' || $mybb->get_input('action') !== 'change') {
+        return $settingPeekers;
     }
 
-    return true;
+    $groupID = $mybb->get_input('module', MyBB::INPUT_INT);
+
+    if ($groupID === getSettingGroupID() || !$groupID) {
+        $settingPeekers = array_merge($settingPeekers, [
+            'new Peeker($(".setting_mysupport_enabletechnical"), $("#row_setting_mysupport_hidetechnical"), 1, true)',
+            'new Peeker($(".setting_mysupport_enabletechnical"), $("#row_setting_mysupport_technicalnotice"), 1, true)',
+            'new Peeker($(".setting_mysupport_enableassign"), $("#row_setting_mysupport_assignpm"), 1, true)',
+            'new Peeker($(".setting_mysupport_enableassign"), $("#row_setting_mysupport_assignsubscribe"), 1, true)',
+            'new Peeker($(".setting_mysupport_pointssystem"), $("#row_setting_mysupport_pointssystemname"), /other/, false)',
+            'new Peeker($(".setting_mysupport_pointssystem"), $("#row_setting_mysupport_pointssystemcolumn"), /other/, false)',
+            'new Peeker($(".setting_mysupport_pointssystem"), $("#row_setting_mysupport_bestanswerpoints"), /[^none]/, false)',
+        ]);
+    }
+
+    return $settingPeekers;
 }
 
 // Insert the require code in the group edit page.
-function admin_formcontainer_end(array &$args): array
+function admin_formcontainer_end(array &$formArguments): array
 {
-    global $run_module, $form_container, $lang, $form, $mybb, $mysupport;
+    global $run_module, $form_container, $lang, $form, $mybb;
 
-    if ($run_module == 'user' && !empty($lang->forums_posts) && $form_container->_title == $lang->forums_posts) {
-        loadLanguage();
+    if ($run_module !== 'user' || empty($lang->forums_posts) || $form_container->_title !== $lang->forums_posts) {
+        return $formArguments;
+    }
 
-        $mysupport_options = $mysupport_mod_options = array();
-        foreach (dbDataColumns()['usergroups'] as $field => $definition) {
-            $modperms = 'mysupport_options';
+    loadLanguage();
 
-            if ($field == 'canmanagesupportdenial') {
-                $modperms = 'mysupport_mod_options';
-            }
+    $userOptions = $moderatorOptions = [];
 
-            $lang_var = 'mysupport_usergroups_' . $field;
-            ${$modperms}[] = $form->generate_check_box(
-                $field,
-                1,
-                $lang->$lang_var,
-                array('id' => $field, 'checked' => $mybb->get_input($field, MyBB::INPUT_INT))
-            );
+    foreach (dbDataColumns()['usergroups'] as $fieldName => $fieldDefinition) {
+        $userPermissions = 'userOptions';
+
+        if ($fieldName == 'canmanagesupportdenial') {
+            $userPermissions = 'moderatorOptions';
         }
 
+        ${$userPermissions}[] = $form->generate_check_box(
+            $fieldName,
+            1,
+            $lang->{'mysupport_usergroups_' . $fieldName},
+            ['id' => $fieldName, 'checked' => $mybb->get_input($fieldName, MyBB::INPUT_INT)]
+        );
+    }
+
+    foreach ([$userOptions, $moderatorOptions] as $groupOptions) {
         $form_container->output_row(
             $lang->mysupport,
             '',
             '<div class="group_settings_bit">' . implode(
                 '</div><div class="group_settings_bit">',
-                $mysupport_options
-            ) . '</div>'
-        );
-
-        $form_container->output_row(
-            $lang->mysupport_usergroups_moderator,
-            '',
-            '<div class="group_settings_bit">' . implode(
-                '</div><div class="group_settings_bit">',
-                $mysupport_mod_options
+                $groupOptions
             ) . '</div>'
         );
     }
 
-    return $args;
+    return $formArguments;
 }
 
 // Save group data
 function admin_user_groups_edit_commit(): bool
 {
-    global $updated_group, $mybb, $mysupport, $updated_group;
+    global $updated_group, $mybb, $updated_group;
 
-    foreach (dbDataColumns()['usergroups'] as $field => $definition) {
-        $updated_group[$field] = $mybb->get_input($field, MyBB::INPUT_INT);
+    foreach (dbDataColumns()['usergroups'] as $fieldName => $fieldDefinition) {
+        if (isset($mybb->input[$fieldName])) {
+            $updated_group[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+        }
     }
 
     return true;
 }
 
-function admin_formcontainer_output_row(array &$args): array
+function admin_formcontainer_output_row(array &$formArguments): array
 {
-    global $lang, $mybb, $form, $forum_data, $form_container, $mysupport, $mod_data;
+    global $lang, $mybb, $form, $forum_data, $form_container, $mod_data;
+    global $run_module, $action_file;
 
     static $done = false;
 
-    if ($args['title'] == $lang->forum && $lang->forum && $mybb->get_input(
-            'module',
-            MyBB::INPUT_STRING
-        ) == 'forum-management' && $mybb->get_input('action', MyBB::INPUT_STRING) == 'editmod') {
+    $mySupportOptions = [];
+
+    if ($mybb->get_input(
+            'module'
+        ) == 'forum-management' && !empty($lang->forum) && $formArguments['title'] === $lang->forum) {
         loadLanguage();
 
-        $mysupport_options = array();
-        foreach (dbDataColumns()['moderators'] as $field => $definition) {
-            $lang_var = 'mysupport_moderators_' . $field;
-            $mysupport_options[] = $form->generate_check_box(
-                $field,
-                1,
-                $lang->$lang_var,
-                array('id' => $field, 'checked' => $mod_data[$field])
-            );
-        }
-
-        $form_container->output_row(
-            $lang->mysupport,
-            '',
-            "<div class=\"forum_settings_bit\">" . implode(
-                "</div><div class=\"forum_settings_bit\">",
-                $mysupport_options
-            ) . '</div>'
-        );
-    }
-
-    if (
-        !empty($lang->misc_options) &&
-        $args['title'] == $lang->misc_options &&
-        $mybb->get_input('module', MyBB::INPUT_STRING) == 'forum-management' &&
-        $mybb->get_input('action', MyBB::INPUT_STRING) == 'edit' &&
-        !$done
-    ) {
-        $done = true;
-
-        loadLanguage();
-
-        $mysupport_options = array();
-        foreach (dbDataColumns()['forums'] as $field => $definition) {
-            if ($field == 'technicalthreads') {
+        foreach (dbDataColumns()['moderators'] as $fieldName => $fieldDefinition) {
+            if ($fieldName === 'technicalthreads') {
                 continue;
             }
 
-            $lang_var = 'mysupport_forums_' . $field;
-            $mysupport_options[] = $form->generate_check_box(
-                $field,
+            $mySupportOptions[] = $form->generate_check_box(
+                $fieldName,
                 1,
-                $lang->$lang_var,
-                array('id' => $field, 'checked' => $forum_data[$field])
+                $lang->{'mysupport_moderators_' . $fieldName},
+                ['id' => $fieldName, 'checked' => $mod_data[$fieldName]]
             );
         }
+    }
 
+    if ($mybb->get_input(
+            'module'
+        ) == 'forum-management' && !empty($lang->misc_options) && $formArguments['title'] === $lang->misc_options) {
+        loadLanguage();
+
+        foreach (dbDataColumns()['forums'] as $fieldName => $fieldDefinition) {
+            if ($fieldName === 'technicalthreads') {
+                continue;
+            }
+
+            $mySupportOptions[] = $form->generate_check_box(
+                $fieldName,
+                1,
+                $lang->{'mysupport_forums_' . $fieldName},
+                ['id' => $fieldName, 'checked' => $forum_data[$fieldName]]
+            );
+        }
+    }
+
+    if ($mySupportOptions) {
         $form_container->output_row(
             $lang->mysupport,
             '',
-            "<div class=\"forum_settings_bit\">" . implode(
-                "</div><div class=\"forum_settings_bit\">",
-                $mysupport_options
+            '<div class="forum_settings_bit">' . implode(
+                '</div><div class="forum_settings_bit">',
+                $mySupportOptions
             ) . '</div>'
         );
     }
 
-    return $args;
+    return $formArguments;
 }
 
 // Save forum data
 function admin_forum_management_edit_commit(): bool
 {
-    global $mybb, $mysupport, $db, $fid;
+    global $mybb, $db, $fid;
 
-    $update_array = array();
-    foreach (dbDataColumns()['forums'] as $field => $definition) {
-        $update_array[$field] = $mybb->get_input($field, MyBB::INPUT_INT);
+    $updateData = [];
+
+    foreach (dbDataColumns()['forums'] as $fieldName => $fieldDefinition) {
+        if (isset($mybb->input[$fieldName])) {
+            $updateData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+        }
     }
 
-    $db->update_query('forums', $update_array, "fid='{$fid}'");
+    $db->update_query('forums', $updateData, "fid='{$fid}'");
 
     $mybb->cache->update_forums();
 
@@ -327,33 +309,13 @@ function admin_forum_management_edit_commit(): bool
 // Save forum data
 function admin_forum_management_editmod_commit(): bool
 {
-    global $mybb, $mysupport, $update_array;
+    global $mybb, $update_array;
 
-    foreach (dbDataColumns()['moderators'] as $field => $definition) {
-        $update_array[$field] = $mybb->get_input($field, MyBB::INPUT_INT);
+    foreach (dbDataColumns()['moderators'] as $fieldName => $fieldDefinition) {
+        if (isset($mybb->input[$fieldName])) {
+            $update_array[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+        }
     }
-
-    return true;
-}
-
-function admin_tools_cache_start(): bool
-{
-    control_object(
-        $GLOBALS['cache'],
-        '
-		function update_mysupport()
-		{
-			\MySupport\Core\updateCache();
-		}
-	'
-    );
-
-    return true;
-}
-
-function admin_tools_cache_rebuild(): bool
-{
-    admin_tools_cache_start();
 
     return true;
 }

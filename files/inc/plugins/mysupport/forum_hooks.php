@@ -487,8 +487,8 @@ function member_profile_end(): bool
             $denied_text = $lang->denied_support_profile;
             if ($mybb->usergroup['canmanagesupportdenial']) {
                 $mysupport_cache = $cache->read('mysupport');
-                if (array_key_exists($memprofile['deniedsupportreason'], $mysupport_cache['deniedreasons'])) {
-                    $deniedsupportreason = $mysupport_cache['deniedreasons'][$memprofile['deniedsupportreason']]['name'];
+                if (array_key_exists($memprofile['deniedsupportreason'], $mysupport_cache['deniedReasons'])) {
+                    $deniedsupportreason = $mysupport_cache['deniedReasons'][$memprofile['deniedsupportreason']]['name'];
                     $denied_text .= ' ' . $lang->sprintf(
                             $lang->deniedsupport_reason,
                             htmlspecialchars_uni($deniedsupportreason)
@@ -572,7 +572,7 @@ function modcp_start(): bool
             // -1 is if we're revoking and 0 is no reason, so those are exempt
             if (!array_key_exists(
                     $deniedsupportreason,
-                    $mysupport_cache['deniedreasons']
+                    $mysupport_cache['deniedReasons']
                 ) && $deniedsupportreason != -1 && $deniedsupportreason != 0) {
                 error($lang->support_denial_reason_invalid_reason, $lang->mysupport_error);
             } elseif ($deniedsupportreason == -1) {
@@ -682,9 +682,9 @@ function modcp_start(): bool
             }
 
             $mysupport_cache = $cache->read('mysupport');
-            if (!empty($mysupport_cache['deniedreasons'])) {
+            if (!empty($mysupport_cache['deniedReasons'])) {
                 // if there's one or more reasons set, show them in a dropdown
-                foreach ($mysupport_cache['deniedreasons'] as $deniedreason) {
+                foreach ($mysupport_cache['deniedReasons'] as $deniedreason) {
                     $value = (int)$deniedreason['mid'];
 
                     $text = htmlspecialchars_uni($deniedreason['name']);
@@ -1776,8 +1776,8 @@ function showthread_start20(): bool
         if ($mybb->settings['mysupport_enablesupportdenial'] && $forum['mysupportdenial'] && $mybb->usergroup['canmanagesupportdenial']) {
             $support_denial_reasons = array();
             $mysupport_cache = $cache->read('mysupport');
-            if (!empty($mysupport_cache['deniedreasons'])) {
-                foreach ($mysupport_cache['deniedreasons'] as $deniedreason) {
+            if (!empty($mysupport_cache['deniedReasons'])) {
+                foreach ($mysupport_cache['deniedReasons'] as $deniedreason) {
                     $support_denial_reasons[$deniedreason['mid']] = htmlspecialchars_uni($deniedreason['name']);
                 }
             }
