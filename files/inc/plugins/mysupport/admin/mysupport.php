@@ -23,6 +23,7 @@ use function MySupport\Core\updateCache;
 
 use const MySupport\Core\CACHE_TYPE_DENIED_REASONS;
 use const MySupport\Core\CACHE_TYPE_PRIORITIES;
+use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;
 
 if (!defined('IN_MYBB')) {
     header('HTTP/1.0 404 Not Found');
@@ -44,10 +45,7 @@ $cache->update_usergroups();
 
 $page->add_breadcrumb_item($lang->mysupport, 'index.php?module=config-mysupport');
 
-if ($mybb->input['action'] == 'categories') {
-    flash_message($lang->categories_prefixes_redirect, 'success');
-    admin_redirect('index.php?module=config-thread_prefixes');
-} elseif ($mybb->input['action'] == 'do_priorities') {
+if ($mybb->input['action'] == 'do_priorities') {
     if (!verify_post_check($mybb->input['my_post_key'])) {
         flash_message($lang->invalid_post_verify_key2, 'error');
         admin_redirect('index.php?module=config-mysupport&action=priorities');
@@ -62,7 +60,7 @@ if ($mybb->input['action'] == 'categories') {
             'name' => $db->escape_string($mybb->input['name']),
             'description' => $db->escape_string($mybb->input['description']),
             'extra' => $db->escape_string(str_replace('#', '', $mybb->input['style'])),
-            'type' => 'priority'
+            'type' => DATABASE_ROW_TYPE_PRIORITY
         );
         $db->insert_query('mysupport', $insert);
 
@@ -96,7 +94,8 @@ if ($mybb->input['action'] == 'categories') {
                 'priority' => 0
             );
             $db->update_query('threads', $update, "priority = '{$pid}'");
-            $db->delete_query('mysupport', "mid = '{$pid}' AND type = 'priority'");
+            $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+            $db->delete_query('mysupport', "mid = '{$pid}' AND type = '{$priorityType}'");
 
             updateCache(CACHE_TYPE_PRIORITIES);
 
@@ -289,9 +288,6 @@ if ($mybb->input['action'] == 'categories') {
     }
 
     $page->output_footer();
-} elseif ($mybb->input['action'] == 'settings') {
-    // redirect to the settings page
-    admin_redirect('index.php?module=config-settings&action=change&gid=' . getSettingGroupID());
 } else {
     $page->add_breadcrumb_item($lang->priorities, 'index.php?module=config-mysupport&amp;action=priorities');
 
@@ -303,7 +299,8 @@ if ($mybb->input['action'] == 'categories') {
         $table = new Table();
 
         $pid = intval($mybb->input['pid']);
-        $query = $db->simple_select('mysupport', '*', "type = 'priority' AND mid = '{$pid}'");
+        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+        $query = $db->simple_select('mysupport', '*', "type = '{$priorityType}' AND mid = '{$pid}'");
         if ($db->num_rows($query) == 0) {
             flash_message($lang->priority_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
@@ -350,7 +347,8 @@ if ($mybb->input['action'] == 'categories') {
         $form->end();
     } elseif ($mybb->input['do'] == 'delete') {
         $pid = intval($mybb->input['pid']);
-        $query = $db->simple_select('mysupport', '*', "type = 'priority' AND mid = '{$pid}'");
+        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+        $query = $db->simple_select('mysupport', '*', "type = '{$priorityType}' AND mid = '{$pid}'");
         if ($db->num_rows($query) == 0) {
             flash_message($lang->priority_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
@@ -386,7 +384,8 @@ if ($mybb->input['action'] == 'categories') {
 			WHERE t.priority = '{$pid}'
 		"
         );
-        $query2 = $db->simple_select('mysupport', 'name', "mid = '{$pid}' AND type = 'priority'");
+        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+        $query2 = $db->simple_select('mysupport', 'name', "mid = '{$pid}' AND type = '{$priorityType}'");
         $priority_name = $db->fetch_field($query2, 'name');
         if ($db->num_rows($query) > 0) {
             $table->construct_header($lang->thread);
@@ -434,7 +433,8 @@ if ($mybb->input['action'] == 'categories') {
 
         $table = new Table();
 
-        $query = $db->simple_select('mysupport', '*', "type = 'priority'");
+        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+        $query = $db->simple_select('mysupport', '*', "type = '{$priorityType}'");
         if ($db->num_rows($query) > 0) {
             $table->construct_header($lang->mysupport_name);
             $table->construct_header($lang->mysupport_description);
@@ -509,16 +509,6 @@ function generate_mysupport_tabs($selected)
         'title' => $lang->support_denial,
         'link' => 'index.php?module=config-mysupport&amp;action=support_denial',
         'description' => $lang->support_denial_nav
-    );
-    $sub_tabs['categories'] = array(
-        'title' => $lang->categories,
-        'link' => 'index.php?module=config-mysupport&amp;action=categories',
-        'description' => ''
-    );
-    $sub_tabs['settings'] = array(
-        'title' => $lang->mysupport_settings,
-        'link' => 'index.php?module=config-mysupport&amp;action=settings',
-        'description' => ''
     );
 
     $page->output_nav_tabs($sub_tabs, $selected);

@@ -28,6 +28,9 @@ use function MySupport\Core\loadLanguage;
 
 use function MySupport\MyAlerts\getAvailableLocations;
 
+use function MySupport\MyAlerts\MyAlertsIsIntegrable;
+
+use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;
 use const MySupport\Core\ROOT;
 use const MySupport\Core\VERSION;
 use const MySupport\Core\VERSION_CODE;
@@ -38,20 +41,19 @@ const TASK_FILE_INSTALL = 1;
 
 function pluginInformation(): array
 {
-	global $lang;
+    global $lang;
 
-	loadLanguage();
+    loadLanguage();
 
-	$myalerts_desc = '';
+    $myAlertsDescription = '';
 
-	/*if(pluginIsInstalled() && \MySupport\MyAlerts\MyAlertsIsIntegrable())
-	{
-		$myalerts_desc .= $lang->mysupport_myalerts_desc;
-	}*/
+    if (pluginIsInstalled() && MyAlertsIsIntegrable()) {
+        $myAlertsDescription .= $lang->mysupport_myalerts_desc;
+    }
 
-	return [
-		'name' => 'MySupport',
-		'description' => $lang->mysupport_desc . $myalerts_desc,
+    return [
+        'name' => 'MySupport',
+        'description' => $lang->mysupport_desc . $myAlertsDescription,
         'website' => 'http://mattrogowski.co.uk/mybb/plugins/plugin/mysupport',
         'author' => 'MattRogowski',
         'authorsite' => 'http://mattrogowski.co.uk/mybb/',
@@ -330,6 +332,8 @@ function pluginActivation(): bool
 
     /*~*~* RUN UPDATES START *~*~*/
 
+    $db->update_query('mysupport', ['type' => DATABASE_ROW_TYPE_PRIORITY], "type='priority'");
+
     /*~*~* RUN UPDATES END *~*~*/
 
     $cache->update_forums();
@@ -585,7 +589,7 @@ function loadPluginLibrary(): bool
 
 function pluginInstallation(): bool
 {
-    global $cache, $db;
+    global $cache, $db, $lang;
 
     loadLanguage();
 
@@ -597,27 +601,24 @@ function pluginInstallation(): bool
 
     $prioritiesData = json_decode($prioritiesContents, true);
 
-    foreach ($prioritiesData as $priorityKey => &$priorityData) {
-        if (empty($lang->{"mySupportPriorities{$priorityKey}"})) {
-            continue;
-        }
+    $priorityItems = [];
 
-        $priorityData['name'] = $lang->{"mySupportPriorities{$priorityKey}"};
-        $priorityData['description'] = $lang->{"mySupportPriorities{$priorityKey}Description"};
+    foreach ($prioritiesData as $priorityKey => &$priorityData) {
+        if (isset($lang->{"mySupportPriorities{$priorityKey}"})) {
+            $priorityItems[] = [
+                'name' => $lang->{"mySupportPriorities{$priorityKey}"},
+                'description' => $lang->{"mySupportPriorities{$priorityKey}Description"},
+                'extra' => $priorityData['extra'],
+            ];
+        }
     }
 
-    foreach ($prioritiesData as $priorityData) {
-        _dump([
-            'type' => $db->escape_string('priority'),
-            'name' => $db->escape_string($priorityData['name']),
-            'description' => $db->escape_string($priorityData['description']),
-            'extra' => $db->escape_string($priorityData['extra']),
-        ]);
+    foreach ($priorityItems as $priorityItem) {
         $db->insert_query('mysupport', [
-            'type' => $db->escape_string('priority'),
-            'name' => $db->escape_string($priorityData['name']),
-            'description' => $db->escape_string($priorityData['description']),
-            'extra' => $db->escape_string($priorityData['extra']),
+            'type' => DATABASE_ROW_TYPE_PRIORITY,
+            'name' => $db->escape_string($priorityItem['name']),
+            'description' => $db->escape_string($priorityItem['description']),
+            'extra' => $db->escape_string($priorityItem['extra']),
         ]);
     }
 
@@ -922,7 +923,7 @@ function getSettingGroupID(): int
 
     $dbQuery = $db->simple_select('settinggroups', 'gid', "name = 'mysupport'", ['limit' => 1]);
 
-    if ($db->num_rows($dbQuery)) {
+    if (!$db->num_rows($dbQuery)) {
         return 0;
     }
 

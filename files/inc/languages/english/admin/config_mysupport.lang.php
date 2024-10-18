@@ -38,7 +38,6 @@ $l['home_nav'] = 'Basic information on MySupport.';
 $l['general'] = 'General';
 $l['general_header'] = 'General Configuration';
 $l['general_nav'] = 'Manage general settings such as which forums to enable MySupport in, and set permissions for usergroups.';
-$l['categories'] = 'Categories';
 $l['priorities'] = 'Priorities';
 $l['priorities_current'] = 'Current Priorities';
 $l['priorities_header'] = 'Priority Configuration';
@@ -54,7 +53,6 @@ $l['support_denial_reason_users'] = 'Users denied support';
 $l['support_denial_reason_add'] = 'Add a reason';
 $l['support_denial_reason_edit'] = 'Edit a reason';
 $l['support_denial_reason_edit_user'] = 'Edit a user';
-$l['mysupport_settings'] = 'Settings';
 
 $l['support_threads'] = 'Support Threads Overview';
 $l['support_threads_total'] = '<strong>Total Support Threads:</strong> {1}';

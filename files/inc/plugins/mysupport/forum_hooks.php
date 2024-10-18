@@ -293,7 +293,7 @@ function forumdisplay_thread(): bool
                 $mysupport_bestanswer = eval($templates->render('mysupport_jumpto_bestanswer'));
             }
         }
-    } else {
+    } elseif (isset($inline_mod_checkbox)) {
         $inline_mod_checkbox = str_replace('{priority_class}', '', $inline_mod_checkbox);
     }
 

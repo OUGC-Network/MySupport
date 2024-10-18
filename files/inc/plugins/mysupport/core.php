@@ -35,6 +35,8 @@ const CACHE_TYPE_PRIORITIES = 2;
 
 const CACHE_TYPE_DENIED_REASONS = 3;
 
+const DATABASE_ROW_TYPE_PRIORITY = 1;
+
 function loadLanguage(bool $loadForumEndFile = false): bool
 {
     global $lang;
@@ -212,10 +214,12 @@ function updateCache(int $cacheType = CACHE_TYPE_ALL): bool
             $newCachedData['versionCode'] = VERSION_CODE;
         case CACHE_TYPE_ALL:
         case CACHE_TYPE_PRIORITIES:
+            $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+
             $dbQuery = $db->simple_select(
                 'mysupport',
                 'mid, name, description, extra',
-                "type = 'priority'",
+                "type = '{$priorityType}'",
                 ['order_by' => 'name']
             );
 
