@@ -56,12 +56,12 @@ if ($mybb->input['action'] == 'do_priorities') {
             flash_message($lang->priority_no_name, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         }
-        $insert = array(
+        $insert = [
             'name' => $db->escape_string($mybb->input['name']),
             'description' => $db->escape_string($mybb->input['description']),
             'extra' => $db->escape_string(str_replace('#', '', $mybb->input['style'])),
             'type' => DATABASE_ROW_TYPE_PRIORITY
-        );
+        ];
         $db->insert_query('mysupport', $insert);
 
         updateCache(CACHE_TYPE_PRIORITIES);
@@ -74,11 +74,11 @@ if ($mybb->input['action'] == 'do_priorities') {
             flash_message($lang->priority_no_name, 'error');
             admin_redirect("index.php?module=config-mysupport&action=priorities&do=edit&pid={$pid}");
         }
-        $update = array(
+        $update = [
             'name' => $db->escape_string($mybb->input['name']),
             'description' => $db->escape_string($mybb->input['description']),
             'extra' => $db->escape_string(str_replace('#', '', $mybb->input['style']))
-        );
+        ];
         $db->update_query('mysupport', $update, "mid = '{$pid}'");
 
         updateCache(CACHE_TYPE_PRIORITIES);
@@ -90,9 +90,9 @@ if ($mybb->input['action'] == 'do_priorities') {
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         } else {
             $pid = intval($mybb->input['pid']);
-            $update = array(
+            $update = [
                 'priority' => 0
-            );
+            ];
             $db->update_query('threads', $update, "priority = '{$pid}'");
             $priorityType = DATABASE_ROW_TYPE_PRIORITY;
             $db->delete_query('mysupport', "mid = '{$pid}' AND type = '{$priorityType}'");
@@ -118,11 +118,11 @@ if ($mybb->input['action'] == 'do_priorities') {
             flash_message($lang->support_denial_reason_no_description, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         }
-        $insert = array(
+        $insert = [
             'name' => $db->escape_string($mybb->input['name']),
             'description' => $db->escape_string($mybb->input['description']),
             'type' => 'deniedreason'
-        );
+        ];
         $db->insert_query('mysupport', $insert);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
@@ -139,10 +139,10 @@ if ($mybb->input['action'] == 'do_priorities') {
             flash_message($lang->support_denial_reason_no_description, 'error');
             admin_redirect("index.php?module=config-mysupport&action=support_denial&do=edit&drid={$drid}");
         }
-        $update = array(
+        $update = [
             'name' => $db->escape_string($mybb->input['name']),
             'description' => $db->escape_string($mybb->input['description'])
-        );
+        ];
         $db->update_query('mysupport', $update, "mid = '{$drid}'");
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
@@ -154,9 +154,9 @@ if ($mybb->input['action'] == 'do_priorities') {
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         } else {
             $drid = intval($mybb->input['drid']);
-            $update = array(
+            $update = [
                 'deniedsupportreason' => 0
-            );
+            ];
             $db->update_query('users', $update, "deniedsupportreason = '{$drid}'");
             $db->delete_query('mysupport', "mid = '{$drid}'");
 
@@ -246,18 +246,18 @@ if ($mybb->input['action'] == 'do_priorities') {
         if ($db->num_rows($query) != 0) {
             $table->construct_header($lang->mysupport_name);
             $table->construct_header($lang->mysupport_description);
-            $table->construct_header($lang->controls, array('colspan' => 2, 'class' => 'align_center'));
+            $table->construct_header($lang->controls, ['colspan' => 2, 'class' => 'align_center']);
 
             while ($deniedreason = $db->fetch_array($query)) {
-                $table->construct_cell($deniedreason['name'], array('width' => '20%'));
-                $table->construct_cell($deniedreason['description'], array('width' => '50%'));
+                $table->construct_cell($deniedreason['name'], ['width' => '20%']);
+                $table->construct_cell($deniedreason['description'], ['width' => '50%']);
                 $table->construct_cell(
                     "<a href=\"index.php?module=config-mysupport&amp;action=support_denial&amp;do=edit&amp;drid={$deniedreason['mid']}\">{$lang->edit}</a>",
-                    array('class' => 'align_center', 'width' => '10%')
+                    ['class' => 'align_center', 'width' => '10%']
                 );
                 $table->construct_cell(
                     "<a href=\"index.php?module=config-mysupport&amp;action=support_denial&amp;do=delete&amp;drid={$deniedreason['mid']}\">{$lang->delete}</a>",
-                    array('class' => 'align_center', 'width' => '10%')
+                    ['class' => 'align_center', 'width' => '10%']
                 );
                 $table->construct_row();
             }
@@ -326,14 +326,14 @@ if ($mybb->input['action'] == 'do_priorities') {
         $edit_priority_groups = $form->generate_group_select(
             'groups',
             explode(',', $priority['groups']),
-            array('multiple' => true)
+            ['multiple' => true]
         );
         $form_container->output_row($lang->priority_groups, $lang->priority_groups_description, $edit_priority_groups);
 
         $edit_priority_forums = $form->generate_forum_select(
             'forums',
             explode(',', $priority['forums']),
-            array('multiple' => true)
+            ['multiple' => true]
         );
         $form_container->output_row($lang->priority_forums, $lang->priority_forums_description, $edit_priority_forums);
 
@@ -402,25 +402,25 @@ if ($mybb->input['action'] == 'do_priorities') {
                     "<a href=\"{$mybb->settings['bburl']}/{$thread_link}\" target=\"_blank\">" . htmlspecialchars_uni(
                         $thread['subject']
                     ) . '</a>',
-                    array('width' => '30%')
+                    ['width' => '30%']
                 );
                 $table->construct_cell(
                     "<a href=\"{$mybb->settings['bburl']}/{$forum_link}\" target=\"_blank\">" . htmlspecialchars_uni(
                         $thread['name']
                     ) . '</a>',
-                    array('width' => '30%')
+                    ['width' => '30%']
                 );
-                $table->construct_cell($profile_link, array('class' => 'align_center', 'width' => '20%'));
+                $table->construct_cell($profile_link, ['class' => 'align_center', 'width' => '20%']);
                 $table->construct_cell(
                     _get_friendly_status($thread['status']),
-                    array('class' => 'align_center', 'width' => '20%')
+                    ['class' => 'align_center', 'width' => '20%']
                 );
                 $table->construct_row();
             }
         } else {
             $table->construct_cell(
                 $lang->sprintf($lang->priorities_thread_list_none, $priority_name),
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
             $table->construct_row();
         }
@@ -438,7 +438,7 @@ if ($mybb->input['action'] == 'do_priorities') {
         if ($db->num_rows($query) > 0) {
             $table->construct_header($lang->mysupport_name);
             $table->construct_header($lang->mysupport_description);
-            $table->construct_header($lang->controls, array('colspan' => 3, 'class' => 'align_center'));
+            $table->construct_header($lang->controls, ['colspan' => 3, 'class' => 'align_center']);
 
             while ($priority = $db->fetch_array($query)) {
                 if (!empty($priority['extra'])) {
@@ -446,19 +446,19 @@ if ($mybb->input['action'] == 'do_priorities') {
                 } else {
                     $style = '';
                 }
-                $table->construct_cell($priority['name'], array('width' => '20%', 'style' => $style));
-                $table->construct_cell($priority['description'], array('width' => '30%', 'style' => $style));
+                $table->construct_cell($priority['name'], ['width' => '20%', 'style' => $style]);
+                $table->construct_cell($priority['description'], ['width' => '30%', 'style' => $style]);
                 $table->construct_cell(
                     "<a href=\"index.php?module=config-mysupport&amp;action=priorities&amp;do=edit&amp;pid={$priority['mid']}\">{$lang->edit}</a>",
-                    array('class' => 'align_center', 'width' => '15%')
+                    ['class' => 'align_center', 'width' => '15%']
                 );
                 $table->construct_cell(
                     "<a href=\"index.php?module=config-mysupport&amp;action=priorities&amp;do=delete&amp;pid={$priority['mid']}\">{$lang->delete}</a>",
-                    array('class' => 'align_center', 'width' => '15%')
+                    ['class' => 'align_center', 'width' => '15%']
                 );
                 $table->construct_cell(
                     "<a href=\"index.php?module=config-mysupport&amp;action=priorities&amp;do=viewthreads&amp;pid={$priority['mid']}\">{$lang->mysupport_view_threads}</a>",
-                    array('class' => 'align_center', 'width' => '20%')
+                    ['class' => 'align_center', 'width' => '20%']
                 );
                 $table->construct_row();
             }
@@ -499,17 +499,17 @@ function generate_mysupport_tabs($selected)
 {
     global $lang, $page;
 
-    $sub_tabs = array();
-    $sub_tabs['priorities'] = array(
+    $sub_tabs = [];
+    $sub_tabs['priorities'] = [
         'title' => $lang->priorities,
         'link' => 'index.php?module=config-mysupport&amp;action=priorities',
         'description' => $lang->priorities_nav
-    );
-    $sub_tabs['support_denial'] = array(
+    ];
+    $sub_tabs['support_denial'] = [
         'title' => $lang->support_denial,
         'link' => 'index.php?module=config-mysupport&amp;action=support_denial',
         'description' => $lang->support_denial_nav
-    );
+    ];
 
     $page->output_nav_tabs($sub_tabs, $selected);
 }

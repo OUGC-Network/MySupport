@@ -110,23 +110,23 @@ function send_pm(array $pm, int $fromid = 0, bool $admin_override = false): bool
     }
 
     // Build our final PM array
-    $pm = array(
+    $pm = [
         'subject' => $pm['subject'],
         'message' => $pm['message'],
         'icon' => -1,
         'fromid' => ($fromid == 0 ? (int)$mybb->user['uid'] : ($fromid < 0 ? 0 : $fromid)),
-        'toid' => array($pm['touid']),
-        'bccid' => array(),
+        'toid' => [$pm['touid']],
+        'bccid' => [],
         'do' => '',
         'pmid' => '',
         'saveasdraft' => 0,
-        'options' => array(
+        'options' => [
             'signature' => 0,
             'disablesmilies' => 0,
             'savecopy' => 0,
             'readreceipt' => 0
-        )
-    );
+        ]
+    ];
 
     if (isset($session)) {
         $pm['ipaddress'] = $session->packedip;
@@ -280,7 +280,7 @@ function _get_count(string $type, int $fid = 0): int
             }
         } // we have an FID, so count the number of technical threads in this specific forum and all it's parents
         else {
-            $forums_list = array();
+            $forums_list = [];
             foreach ($forums as $forum => $info) {
                 $parentlist = $info['parentlist'];
                 if (strpos(',' . $parentlist . ',', ',' . $fid . ',') !== false) {
@@ -308,7 +308,7 @@ function _get_count(string $type, int $fid = 0): int
             }
         } // we have an FID, so count the number of assigned threads in this specific forum
         else {
-            $forums_list = array();
+            $forums_list = [];
             foreach ($forums as $forum => $info) {
                 $parentlist = $info['parentlist'];
                 if (strpos(',' . $parentlist . ',', ',' . $fid . ',') !== false) {
@@ -334,7 +334,7 @@ function _forums(): array
     global $cache;
 
     $forums = $cache->read('forums');
-    $mysupport_forums = array();
+    $mysupport_forums = [];
 
     foreach ($forums as $forum) {
         // if this forum/category has MySupport enabled, add it to the array
@@ -589,7 +589,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
         if ($multiple) {
             $move_tids = $thread_info;
         } else {
-            $move_tids = array($thread_info['tid']);
+            $move_tids = [$thread_info['tid']];
         }
         require_once MYBB_ROOT . 'inc/class_moderation.php';
         $moderation = new Moderation();
@@ -610,7 +610,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
     // we need to build an array of users who have been assigned threads before the assignment is removed
     if ($status == 1 || $status == 3) {
         $query = $db->simple_select('threads', 'DISTINCT assign', $where_sql . " AND assign != '0'");
-        $assign_users = array();
+        $assign_users = [];
         while ($user = $db->fetch_field($query, 'assign')) {
             $assign_users[] = $user;
         }
@@ -619,7 +619,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
     if ($status == 3 || ($status == 1 && $mybb->settings['mysupport_closewhensolved'] == 'always')) {
         // the bit after || here is for if we're marking as solved via marking a post as the best answer, it will close if it's set to always close
         // the incoming status would be 1 but we need to close it if necessary
-        $status_update = array(
+        $status_update = [
             'closed' => 1,
             'status' => 1,
             'statusuid' => intval($mybb->user['uid']),
@@ -629,15 +629,15 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
             'priority' => 0,
             'closedbymysupport' => 1,
             'onhold' => 0
-        );
+        ];
     } elseif ($status == 0) {
         // if we're marking it as unsolved, a post may have been marked as the best answer when it was originally solved, best remove it, as well as rest everything else
-        $status_update = array(
+        $status_update = [
             'status' => 0,
             'statusuid' => 0,
             'statustime' => 0,
             'bestanswer' => 0
-        );
+        ];
     } elseif ($status == 4) {
         /** if it's 4, it's because it was marked as being not technical after being marked technical
          ** basically put back to the original status of not solved (0)
@@ -645,20 +645,20 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
          ** because both of these options eventually set it back to 0
          ** so the mod log entry will say the correct action as the status was 4 and it used that
          ** now that the log has been inserted we can set it to 0 again for the thread update query so it's marked as unsolved **/
-        $status_update = array(
+        $status_update = [
             'status' => 0,
             'statusuid' => 0,
             'statustime' => 0
-        );
+        ];
     } elseif ($status == 2) {
-        $status_update = array(
+        $status_update = [
             'status' => 2,
             'statusuid' => intval($mybb->user['uid']),
             'statustime' => TIME_NOW
-        );
+        ];
     } // if not, it's being marked as solved
     else {
-        $status_update = array(
+        $status_update = [
             'status' => 1,
             'statusuid' => intval($mybb->user['uid']),
             'statustime' => TIME_NOW,
@@ -666,7 +666,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
             'assignuid' => 0,
             'priority' => 0,
             'onhold' => 0
-        );
+        ];
     }
 
     $db->update_query('threads', $status_update, $where_sql);
@@ -683,10 +683,10 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
     }
     if ($status == 0) {
         // if we're marking a thread(s) as unsolved, re-open any threads that were closed when they were marked as solved, but not any that were closed by denying support
-        $update = array(
+        $update = [
             'closed' => 0,
             'closedbymysupport' => 0
-        );
+        ];
         $db->update_query('threads', $update, $where_sql . " AND closed = '1' AND closedbymysupport = '1'");
     }
 
@@ -804,7 +804,7 @@ function get_assign_users(): array
 
     // who can be assigned threads?
     $groups = $cache->read('usergroups');
-    $assign_groups = array();
+    $assign_groups = [];
     foreach ($groups as $group) {
         if ($group['canbeassigned'] == 1) {
             $assign_groups[] = intval($group['gid']);
@@ -833,7 +833,7 @@ function get_assign_users(): array
                 'order_by' => 'username, uid'
             ]
         );
-        $assign_users = array();
+        $assign_users = [];
         while ($assigned = $db->fetch_array($query)) {
             $assign_users[$assigned['uid']] = $assigned['username'];
         }
@@ -877,7 +877,7 @@ function get_categories(array $forum): array
     $groups_concat_sql = '(' . $groups_concat_sql . " OR groups = '-1')";
 
     $query = $db->simple_select('threadprefixes', 'pid, prefix', "{$forums_concat_sql} AND {$groups_concat_sql}");
-    $categories = array();
+    $categories = [];
     while ($category = $db->fetch_array($query)) {
         $categories[$category['pid']] = $category['prefix'];
     }
@@ -921,7 +921,7 @@ function mysupport_forum(int $fid): bool
  * @param string What permission we're checking.
  * @param int Usergroup of the user we're checking.
  **/
-function mysupport_usergroup(string $perm, array $usergroups = array()): bool
+function mysupport_usergroup(string $perm, array $usergroups = []): bool
 {
     global $mybb, $cache;
 
@@ -932,7 +932,7 @@ function mysupport_usergroup(string $perm, array $usergroups = array()): bool
 
     // if no usergroups are specified, we're checking our own usergroups
     if (empty($usergroups)) {
-        $usergroups = array_merge(array($mybb->user['usergroup']), explode(',', $mybb->user['additionalgroups']));
+        $usergroups = array_merge([$mybb->user['usergroup']], explode(',', $mybb->user['additionalgroups']));
     }
 
     // load the usergroups cache
@@ -973,9 +973,9 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
     }
 
     if ($onhold == 0) {
-        $update = array(
+        $update = [
             'onhold' => 0
-        );
+        ];
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
@@ -986,9 +986,9 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
             mysupport_redirect_message($lang->hold_off_success);
         }
     } else {
-        $update = array(
+        $update = [
             'onhold' => 1
-        );
+        ];
         if ($multiple) {
             // when changing the hold status via the form in a thread, you can't you can't change the hold status if the thread's solved
             // here, it's not as easy to check for that; instead, only change the hold status if the thread isn't solved
@@ -1039,19 +1039,19 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
 
     // because we can assign a thread to somebody if it's already assigned to somebody else, we need to get a list of all the users who have been assigned the threads we're dealing with, so we can recount the number of assigned threads for all these users after the assignment has been chnaged
     $query = $db->simple_select('threads', 'DISTINCT assign', $where_sql . " AND assign != '0'");
-    $assign_users = array(
+    $assign_users = [
         $assign => $assign
-    );
+    ];
     while ($user = $db->fetch_field($query, 'assign')) {
         $assign_users[$user] = $user;
     }
 
     // if we're unassigning it
     if ($assign == '-1') {
-        $update = array(
+        $update = [
             'assign' => 0,
             'assignuid' => 0
-        );
+        ];
         // remove the assignment on the thread
         $db->update_query('threads', $update, $where_sql);
 
@@ -1069,10 +1069,10 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
         }
     } // if we're assigning it or changing the assignment
     else {
-        $update = array(
+        $update = [
             'assign' => intval($assign),
             'assignuid' => intval($mybb->user['uid'])
-        );
+        ];
         if ($multiple) {
             // when assigning via the form in a thread, you can't assign a thread if it's solved
             // here, it's not as easy to check for that; instead, only assign a thread if it isn't solved
@@ -1093,7 +1093,7 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
             if ($multiple) {
                 $tids = $thread_info;
             } else {
-                $tids = array($thread_info['tid']);
+                $tids = [$thread_info['tid']];
             }
             foreach ($tids as $tid) {
                 $query = $db->simple_select('threadsubscriptions', '*', "uid = '{$assign}' AND tid = '{$tid}'");
@@ -1153,7 +1153,7 @@ function mysupport_change_priority(array $thread_info, int $priority, bool $mult
     $priority = $db->escape_string($priority);
 
     $mysupport_cache = $cache->read('mysupport');
-    $priorities = array();
+    $priorities = [];
     if (!empty($mysupport_cache['priorities'])) {
         foreach ($mysupport_cache['priorities'] as $priority_info) {
             $priorities[$priority_info['mid']] = $priority_info['name'];
@@ -1172,9 +1172,9 @@ function mysupport_change_priority(array $thread_info, int $priority, bool $mult
     }
 
     if ($priority == '-1') {
-        $update = array(
+        $update = [
             'priority' => 0
-        );
+        ];
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
@@ -1187,9 +1187,9 @@ function mysupport_change_priority(array $thread_info, int $priority, bool $mult
             );
         }
     } else {
-        $update = array(
+        $update = [
             'priority' => intval($priority)
-        );
+        ];
         if ($multiple) {
             // when setting a priority via the form in a thread, you can't give a thread a priority if it's solved
             // here, it's not as easy to check for that; instead, only set the priority if the thread isn't solved
@@ -1245,7 +1245,7 @@ function mysupport_change_category(array $thread_info, int $category, bool $mult
     $category = $db->escape_string($category);
 
     $query = $db->simple_select('threadprefixes', 'pid, prefix');
-    $categories = array();
+    $categories = [];
     while ($category_info = $db->fetch_array($query)) {
         $categories[$category_info['pid']] = htmlspecialchars_uni($category_info['prefix']);
     }
@@ -1262,9 +1262,9 @@ function mysupport_change_category(array $thread_info, int $category, bool $mult
     }
 
     if ($category == '-1') {
-        $update = array(
+        $update = [
             'prefix' => 0
-        );
+        ];
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
@@ -1277,9 +1277,9 @@ function mysupport_change_category(array $thread_info, int $category, bool $mult
             );
         }
     } else {
-        $update = array(
+        $update = [
             'prefix' => $category
-        );
+        ];
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
@@ -1341,9 +1341,9 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
     }
 
     if ($issupportthread == 1) {
-        $update = array(
+        $update = [
             'issupportthread' => 1
-        );
+        ];
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
@@ -1354,9 +1354,9 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
             mysupport_redirect_message($lang->issupportthread_1);
         }
     } else {
-        $update = array(
+        $update = [
             'issupportthread' => 0
-        );
+        ];
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
@@ -1440,8 +1440,8 @@ function mysupport_send_assign_pm(int $uid, int $fid, int $tid): bool
     $thread_info = get_thread($tid);
     $thread_name = $thread_info['subject'];
 
-    $recipients_to = array($uid);
-    $recipients_bcc = array();
+    $recipients_to = [$uid];
+    $recipients_bcc = [];
 
     $assigned_by_user_url = $mybb->settings['bburl'] . '/' . get_profile_link($mybb->user['uid']);
     $assigned_by = $lang->sprintf(
@@ -1461,7 +1461,7 @@ function mysupport_send_assign_pm(int $uid, int $fid, int $tid): bool
         $mybb->settings['bburl']
     );
 
-    $pm = array(
+    $pm = [
         'subject' => $lang->assign_pm_subject,
         'message' => $message,
         'icon' => -1,
@@ -1471,13 +1471,13 @@ function mysupport_send_assign_pm(int $uid, int $fid, int $tid): bool
         'do' => '',
         'pmid' => '',
         'saveasdraft' => 0,
-        'options' => array(
+        'options' => [
             'signature' => 1,
             'disablesmilies' => 0,
             'savecopy' => 0,
             'readreceipt' => 0
-        )
-    );
+        ]
+    ];
 
     require_once MYBB_ROOT . 'inc/datahandlers/pm.php';
     $pmhandler = new PMDataHandler();
@@ -1500,13 +1500,13 @@ function recount_technical_threads(): bool
 {
     global $db, $cache;
 
-    $update = array(
+    $update = [
         'technicalthreads' => 0
-    );
+    ];
     $db->update_query('forums', $update);
 
     $query = $db->simple_select('threads', 'fid', "status = '2'");
-    $techthreads = array();
+    $techthreads = [];
     while ($fid = $db->fetch_field($query, 'fid')) {
         if (empty($techthreads[$fid])) {
             $techthreads[$fid] = 0;
@@ -1515,9 +1515,9 @@ function recount_technical_threads(): bool
     }
 
     foreach ($techthreads as $forum => $count) {
-        $update = array(
+        $update = [
             'technicalthreads' => intval($count)
-        );
+        ];
         $db->update_query('forums', $update, "fid = '" . intval($forum) . "'");
     }
 
@@ -1536,7 +1536,7 @@ function mysupport_recount_assigned_threads(int $uid): bool
     $uid = intval($uid);
 
     $query = $db->simple_select('threads', 'fid', "assign = '{$uid}' AND status != '1'");
-    $assigned = array();
+    $assigned = [];
     while ($fid = $db->fetch_field($query, 'fid')) {
         if (!$assigned[$fid]) {
             $assigned[$fid] = 0;
@@ -1545,9 +1545,9 @@ function mysupport_recount_assigned_threads(int $uid): bool
     }
     $assigned = serialize($assigned);
 
-    $update = array(
+    $update = [
         'assignedthreads' => $db->escape_string($assigned)
-    );
+    ];
     $db->update_query('users', $update, "uid = '{$uid}'");
 
     return true;

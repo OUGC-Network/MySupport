@@ -41,7 +41,7 @@ function task_mysupport(array $task): array
                     $cut
                 ) . "' AND (statustime < '" . intval($cut) . "' OR statustime = '0')"
             );
-            $tids = array();
+            $tids = [];
             while ($thread = $db->fetch_array($query)) {
                 $tids[] = $thread['tid'];
             }
@@ -123,8 +123,8 @@ function task_mysupport(array $task): array
                 }
                 $query = $db->simple_select('mysupport');
                 while ($r = $db->fetch_array($query)) {
-                    $keys = array();
-                    $vals = array();
+                    $keys = [];
+                    $vals = [];
                     foreach ($r as $key => $val) {
                         $keys[] = '`' . $key . '`';
                         $vals[] = "'" . $val . "'";
@@ -142,11 +142,11 @@ function task_mysupport(array $task): array
                 @fwrite($f, '?>');
                 @fclose($f);
 
-                $insert = array(
+                $insert = [
                     'type' => 'backup',
                     'name' => $db->escape_string($name),
                     'extra' => TIME_NOW
-                );
+                ];
                 $db->insert_query('mysupport', $insert);
 
                 // get the latest 3 backups
@@ -154,9 +154,9 @@ function task_mysupport(array $task): array
                     'mysupport',
                     'mid',
                     "type = 'backup'",
-                    array('order_by' => 'extra', 'order_dir' => 'DESC', 'limit' => 3)
+                    ['order_by' => 'extra', 'order_dir' => 'DESC', 'limit' => 3]
                 );
-                $backups = array(0);
+                $backups = [0];
                 while ($backup = $db->fetch_field($query, 'mid')) {
                     $backups[] = $backup;
                 }

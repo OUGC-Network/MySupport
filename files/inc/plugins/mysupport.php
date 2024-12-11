@@ -113,7 +113,7 @@ if (!function_exists('control_object')) {
         $checkstr = 'O:' . strlen($classname) . ':"' . $classname . '":';
         $checkstr_len = strlen($checkstr);
         if (substr($objserial, 0, $checkstr_len) == $checkstr) {
-            $vars = array();
+            $vars = [];
             // grab resources/object etc, stripping scope info from keys
             foreach ((array)$obj as $k => $v) {
                 if ($p = strrpos($k, "\0")) {
@@ -147,11 +147,11 @@ if (!function_exists('control_db')) {
         function control_db($code)
         {
             global $db;
-            $linkvars = array(
+            $linkvars = [
                 'read_link' => $db->read_link,
                 'write_link' => $db->write_link,
                 'current_link' => $db->current_link,
-            );
+            ];
             unset($db->read_link, $db->write_link, $db->current_link);
             $lastResult = $GLOBALS['AbstractPdoDbDriver_lastResult_prop']->getValue($db);
             $GLOBALS['AbstractPdoDbDriver_lastResult_prop']->setValue($db, null); // don't let this block serialization

@@ -45,9 +45,9 @@ function mysupport_update_setting_orders(): bool
 
     $i = 1;
     foreach ($settings as $setting) {
-        $update = array(
+        $update = [
             'disporder' => $i
-        );
+        ];
         $db->update_query('settings', $update, "name = '" . $db->escape_string($setting) . "'");
         $i++;
     }

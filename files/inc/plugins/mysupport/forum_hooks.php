@@ -115,7 +115,7 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
             'posts',
             'pid',
             "tid = '" . intval($thread_tid) . "'",
-            array('order_by' => 'dateline', 'order_dir' => 'DESC', 'limit' => 1)
+            ['order_by' => 'dateline', 'order_dir' => 'DESC', 'limit' => 1]
         );
         $pid = $db->fetch_field($query, 'pid');
         $posthandler->data['uid'] = $posthandler->data['edit_uid'];
@@ -130,13 +130,13 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
     // or they're editing the last post in the thread, which is theirs
     // take the thread off hold, as they've made an update
     if ($posthandler->data['uid'] == $thread_uid && ($posthandler->method == 'insert' || ($posthandler->method == 'update' && $posthandler->data['pid'] == $pid))) {
-        $update = array(
+        $update = [
             'onhold' => 0
-        );
+        ];
     } else {
-        $update = array(
+        $update = [
             'onhold' => 1
-        );
+        ];
     }
 
     $db->update_query('threads', $update, "tid = '" . intval($thread_tid) . "'");
@@ -177,7 +177,7 @@ function forumdisplay_start(): bool
     $mysupport_cache = $cache->read('mysupport');
     if (!empty($mysupport_cache['priorities'])) {
         // build an array of all the priorities
-        $priorities = array();
+        $priorities = [];
         // start the CSS classes
         $mysupport_priority_classes = '';
         $mysupport_priority_classes .= "\n<style type=\"text/css\">\n";
@@ -576,17 +576,17 @@ function modcp_start(): bool
                 ) && $deniedsupportreason != -1 && $deniedsupportreason != 0) {
                 error($lang->support_denial_reason_invalid_reason, $lang->mysupport_error);
             } elseif ($deniedsupportreason == -1) {
-                $update = array(
+                $update = [
                     'deniedsupport' => 0,
                     'deniedsupportreason' => 0,
                     'deniedsupportuid' => 0
-                );
+                ];
                 $db->update_query('users', $update, "uid = '" . intval($uid) . "'");
 
-                $update = array(
+                $update = [
                     'closed' => 0,
                     'closedbymysupport' => 0
-                );
+                ];
                 $mysupport_forums = implode(',', array_map('intval', _forums()));
                 $db->update_query(
                     'threads',
@@ -604,18 +604,18 @@ function modcp_start(): bool
                     $lang->sprintf($lang->deny_support_revoke_success, htmlspecialchars_uni($username))
                 );
             } else {
-                $update = array(
+                $update = [
                     'deniedsupport' => 1,
                     'deniedsupportreason' => intval($deniedsupportreason),
                     'deniedsupportuid' => intval($mybb->user['uid'])
-                );
+                ];
                 $db->update_query('users', $update, "uid = '" . intval($uid) . "'");
 
                 if ($mybb->settings['mysupport_closewhendenied']) {
-                    $update = array(
+                    $update = [
                         'closed' => 1,
                         'closedbymysupport' => 2
-                    );
+                    ];
                     $mysupport_forums = implode(',', array_map('intval', _forums()));
 
                     $db->update_query(
@@ -644,10 +644,10 @@ function modcp_start(): bool
                 );
             }
             if (!empty($mod_log_action)) {
-                $mod_log_data = array(
+                $mod_log_data = [
                     'fid' => intval($fid),
                     'tid' => intval($tid)
-                );
+                ];
                 log_moderator_action($mod_log_data, $mod_log_action);
             }
             redirect($redirect_url, $redirect);
@@ -1412,7 +1412,7 @@ function moderation_start(): bool
     clearinline($id, $type);
 
     $tids = implode(',', array_map('intval', $threads));
-    $mysupport_threads = array();
+    $mysupport_threads = [];
     // in a list of search results, you could see threads that aren't from a MySupport forum, but the MySupport options will always show in the inline moderation options regardless of this
     // this is a way of determining which of the selected threads from a list of search results are in a MySupport forum
     // this isn't necessary for inline moderation via the forum display, as the options only show in MySupport forums to begin with
@@ -1520,7 +1520,7 @@ function moderation_start(): bool
             $priority = -1;
         } else {
             $mysupport_cache = $cache->read('mysupport');
-            $mids = array();
+            $mids = [];
             if (!empty($mysupport_cache['priorities'])) {
                 foreach ($mysupport_cache['priorities'] as $priority_info) {
                     $mids[] = intval($priority_info['mid']);
@@ -1548,9 +1548,9 @@ function moderation_start(): bool
 
         mysupport_change_category($threads, $category, true);
     }
-    $mod_log_data = array(
+    $mod_log_data = [
         'fid' => intval($fid)
-    );
+    ];
     log_moderator_action($mod_log_data, $mod_log_action);
     redirect($redirect_url, $redirect);
 
@@ -1594,9 +1594,9 @@ function newthread_do_newthread_end(): bool
 
     if (!empty($forum['mysupport'])) {
         if ($mybb->settings['mysupport_enablenotsupportthread'] == 2) {
-            $update = array(
+            $update = [
                 'issupportthread' => 0
-            );
+            ];
             $db->update_query('threads', $update, "tid = '" . intval($thread_info['tid']) . "'");
         }
     }
@@ -1774,7 +1774,7 @@ function showthread_start20(): bool
         ) != 'bestanswer') {
         // load the denied reasons so we can display them to staff if necessary
         if ($mybb->settings['mysupport_enablesupportdenial'] && $forum['mysupportdenial'] && $mybb->usergroup['canmanagesupportdenial']) {
-            $support_denial_reasons = array();
+            $support_denial_reasons = [];
             $mysupport_cache = $cache->read('mysupport');
             if (!empty($mysupport_cache['deniedReasons'])) {
                 foreach ($mysupport_cache['deniedReasons'] as $deniedreason) {
@@ -2283,7 +2283,7 @@ function showthread_start20(): bool
             }
 
             $mysupport_cache = $cache->read('mysupport');
-            $mids = array();
+            $mids = [];
             if (!empty($mysupport_cache['priorities'])) {
                 foreach ($mysupport_cache['priorities'] as $priority_info) {
                     $mids[] = intval($priority_info['mid']);
@@ -2348,10 +2348,10 @@ function showthread_start20(): bool
             }
 
             if (!empty($mod_log_action)) {
-                $mod_log_data = array(
+                $mod_log_data = [
                     'fid' => intval($fid),
                     'tid' => intval($tid)
-                );
+                ];
                 log_moderator_action($mod_log_data, $mod_log_action);
             }
 
@@ -2382,9 +2382,9 @@ function showthread_start20(): bool
         } // is this post already the best answer?
         elseif ($post['pid'] == $thread['bestanswer']) {
             // this will mark it as the best answer
-            $status_update = array(
+            $status_update = [
                 'bestanswer' => 0
-            );
+            ];
             // update the bestanswer column for this thread with 0
             $db->update_query('threads', $status_update, "tid = '" . intval($thread['tid']) . "'");
 
@@ -2404,9 +2404,9 @@ function showthread_start20(): bool
             redirect($post_url, $lang->unbestanswer_redirect);
         } // mark it as the best answer
         else {
-            $status_update = array(
+            $status_update = [
                 'bestanswer' => intval($post['pid'])
-            );
+            ];
             // update the bestanswer column for this thread with the pid of the best answer
             $db->update_query('threads', $status_update, "tid = '" . intval($thread['tid']) . "'");
 
@@ -2430,10 +2430,10 @@ function showthread_start20(): bool
                 _change_status(['tid' => $thread['tid'], 'status' => $thread['status']], 1);
 
                 if (!empty($mod_log_action)) {
-                    $mod_log_data = array(
+                    $mod_log_data = [
                         'fid' => intval($thread['fid']),
                         'tid' => intval($thread['tid'])
-                    );
+                    ];
 
                     log_moderator_action($mod_log_data, $mod_log_action);
                 }
@@ -2454,9 +2454,9 @@ function usercp_start20(): bool
 
     if ($mybb->settings['mysupport_displaytypeuserchange']) {
         if ($mybb->get_input('action') == 'do_options') {
-            $update = array(
+            $update = [
                 'mysupportdisplayastext' => $mybb->get_input('mysupportdisplayastext', MyBB::INPUT_INT)
-            );
+            ];
 
             $db->update_query('users', $update, "uid = '" . intval($mybb->user['uid']) . "'");
         } elseif ($mybb->get_input('action') == 'options') {
@@ -2508,22 +2508,22 @@ function xmlhttp(): bool
         'users',
         'uid, username',
         "username LIKE '%{$likestring}%' AND uid IN ('{$uids}')",
-        array(
+        [
             'order_by' => 'username',
             'order_dir' => 'asc',
             'limit_start' => 0,
             'limit' => 15
-        )
+        ]
     );
 
-    $data = array();
+    $data = [];
 
     while ($user = $db->fetch_array($query)) {
-        $data[] = array(
+        $data[] = [
             'uid' => $user['uid'],
             'id' => $user['username'],
             'text' => $user['username']
-        );
+        ];
     }
 
     echo json_encode($data);
