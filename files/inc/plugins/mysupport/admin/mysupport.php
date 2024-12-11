@@ -17,7 +17,6 @@
 
 declare(strict_types=1);
 
-use function MySupport\Admin\getSettingGroupID;
 use function MySupport\Core\_get_friendly_status;
 use function MySupport\Core\updateCache;
 

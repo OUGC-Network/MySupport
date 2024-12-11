@@ -24,10 +24,8 @@ use MyBB;
 use function MySupport\Admin\dbDataColumns;
 use function MySupport\Admin\getSettingGroupID;
 use function MySupport\Core\loadLanguage;
-
 use function MySupport\MyAlerts\getAvailableLocations;
 use function MySupport\MyAlerts\installLocation;
-
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 
 use const MySupport\Core\ROOT;

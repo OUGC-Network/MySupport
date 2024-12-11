@@ -25,8 +25,6 @@ use MybbStuff_MyAlerts_AlertTypeManager;
 use MybbStuff_MyAlerts_Entity_Alert;
 use PMDataHandler;
 
-use function MySupport\Admin\_info;
-
 const CACHE_TYPE_ALL = 0;
 
 const CACHE_TYPE_VERSION = 1;
@@ -84,12 +82,19 @@ function addHooks(string $namespace): bool
     return true;
 }
 
+function get_setting(string $setting_key = '')
+{
+    global $mybb;
+
+    return $mybb->settings['mysupport_' . $setting_key] ?? false;
+}
+
 // Send a Private Message to a user  (Copied from MyBB 1.7)
 function send_pm(array $pm, int $fromid = 0, bool $admin_override = false): bool
 {
     global $mybb, $session;
 
-    if (!$mybb->settings['mysupport_notifications'] || !$mybb->settings['enablepms'] || !is_array($pm)) {
+    if (!get_setting('notifications') || !$mybb->settings['enablepms'] || !is_array($pm)) {
         return false;
     }
 
@@ -421,9 +426,9 @@ function _get_display_status(int $status, int $onhold = 0, int $statustime = 0, 
     }
 
     // big check to see if either the status is to be show to everybody, only to people who can mark as solved, or to people who can mark as solved or who authored the thread
-    if ($mybb->settings['mysupport_displayto'] == 'all' || ($mybb->settings['mysupport_displayto'] == 'canmas' && mysupport_usergroup(
+    if ($mybb->settings['mysupport_displayto'] == 'all' || ($mybb->settings['mysupport_displayto'] == 'canmas' && user_group(
                 'canmarksolved'
-            )) || ($mybb->settings['mysupport_displayto'] == 'canmasauthor' && (mysupport_usergroup(
+            )) || ($mybb->settings['mysupport_displayto'] == 'canmasauthor' && (user_group(
                     'canmarksolved'
                 ) || $mybb->user['uid'] == $thread_author))) {
         $text = $mybb->settings['mysupport_displaytype'] == 'text';
@@ -678,7 +683,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
     // if the thread is being marked as solved, recount the number of assigned threads for any users who were assigned threads that are now being marked as solved
     if ($status == 1 || $status == 3) {
         foreach ($assign_users as $user) {
-            mysupport_recount_assigned_threads($user);
+            recount_assigned_threads($user);
         }
     }
     if ($status == 0) {
@@ -695,11 +700,11 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
     $friendly_new_status = "'" . _get_friendly_status($status) . "'";
 
     if ($multiple) {
-        mysupport_mod_log_action(
+        mod_log_action(
             $log_status,
             $lang->sprintf($lang->status_change_mod_log_multi, count($thread_info), $friendly_new_status)
         );
-        mysupport_redirect_message(
+        redirect_message(
             $lang->sprintf(
                 $lang->status_change_success_multi,
                 count($thread_info),
@@ -707,8 +712,8 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
             )
         );
     } else {
-        mysupport_mod_log_action($log_status, $lang->sprintf($lang->status_change_mod_log, $friendly_new_status));
-        mysupport_redirect_message(
+        mod_log_action($log_status, $lang->sprintf($lang->status_change_mod_log, $friendly_new_status));
+        redirect_message(
             $lang->sprintf(
                 $lang->status_change_success,
                 htmlspecialchars_uni($friendly_old_status),
@@ -890,7 +895,7 @@ function get_categories(array $forum): array
  * @param int The FID of the thread.
  * @param bool Whether or not this is a MySupport forum.
  **/
-function mysupport_forum(int $fid): bool
+function forum(int $fid): bool
 {
     global $cache;
 
@@ -921,7 +926,7 @@ function mysupport_forum(int $fid): bool
  * @param string What permission we're checking.
  * @param int Usergroup of the user we're checking.
  **/
-function mysupport_usergroup(string $perm, array $usergroups = []): bool
+function user_group(string $perm, array $usergroups = []): bool
 {
     global $mybb, $cache;
 
@@ -979,11 +984,11 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(12, $lang->sprintf($lang->hold_off_success_multi, count($thread_info)));
-            mysupport_redirect_message($lang->sprintf($lang->hold_off_success_multi, count($thread_info)));
+            mod_log_action(12, $lang->sprintf($lang->hold_off_success_multi, count($thread_info)));
+            redirect_message($lang->sprintf($lang->hold_off_success_multi, count($thread_info)));
         } else {
-            mysupport_mod_log_action(12, $lang->hold_off_success);
-            mysupport_redirect_message($lang->hold_off_success);
+            mod_log_action(12, $lang->hold_off_success);
+            redirect_message($lang->hold_off_success);
         }
     } else {
         $update = [
@@ -997,11 +1002,11 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(12, $lang->sprintf($lang->hold_on_success_multi, count($thread_info)));
-            mysupport_redirect_message($lang->sprintf($lang->hold_on_success_multi, count($thread_info)));
+            mod_log_action(12, $lang->sprintf($lang->hold_on_success_multi, count($thread_info)));
+            redirect_message($lang->sprintf($lang->hold_on_success_multi, count($thread_info)));
         } else {
-            mysupport_mod_log_action(12, $lang->hold_on_success);
-            mysupport_redirect_message($lang->hold_on_success);
+            mod_log_action(12, $lang->hold_on_success);
+            redirect_message($lang->hold_on_success);
         }
     }
 
@@ -1015,7 +1020,7 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
  * @param int The UID of who we're assigning it to now.
  * @param bool If this is changing the assigned user of multiple threads.
  **/
-function mysupport_change_assign(array $thread_info, int $assign, bool $multiple = false): bool
+function change_assign(array $thread_info, int $assign, bool $multiple = false): bool
 {
     global $mybb, $db, $lang;
 
@@ -1059,11 +1064,11 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
         $user = get_user($old_assign);
 
         if ($multiple) {
-            mysupport_mod_log_action(6, $lang->sprintf($lang->unassigned_from_success_multi, count($thread_info)));
-            mysupport_redirect_message($lang->sprintf($lang->unassigned_from_success_multi, count($thread_info)));
+            mod_log_action(6, $lang->sprintf($lang->unassigned_from_success_multi, count($thread_info)));
+            redirect_message($lang->sprintf($lang->unassigned_from_success_multi, count($thread_info)));
         } else {
-            mysupport_mod_log_action(6, $lang->sprintf($lang->unassigned_from_success, $user['username']));
-            mysupport_redirect_message(
+            mod_log_action(6, $lang->sprintf($lang->unassigned_from_success, $user['username']));
+            redirect_message(
                 $lang->sprintf($lang->unassigned_from_success, htmlspecialchars_uni($user['username']))
             );
         }
@@ -1086,7 +1091,7 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
 
         if ($mybb->settings['mysupport_assignpm']) {
             // send the PM
-            mysupport_send_assign_pm($assign, $fid, $tid);
+            send_assign_pm($assign, $fid, $tid);
         }
 
         if ($mybb->settings['mysupport_assignsubscribe']) {
@@ -1114,11 +1119,11 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
         }
 
         if ($multiple) {
-            mysupport_mod_log_action(
+            mod_log_action(
                 5,
                 $lang->sprintf($lang->assigned_to_success_multi, count($thread_info), $user['username'])
             );
-            mysupport_redirect_message(
+            redirect_message(
                 $lang->sprintf(
                     $lang->assigned_to_success_multi,
                     count($thread_info),
@@ -1126,13 +1131,13 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
                 )
             );
         } else {
-            mysupport_mod_log_action(5, $lang->sprintf($lang->assigned_to_success, $username));
-            mysupport_redirect_message($lang->sprintf($lang->assigned_to_success, htmlspecialchars_uni($username)));
+            mod_log_action(5, $lang->sprintf($lang->assigned_to_success, $username));
+            redirect_message($lang->sprintf($lang->assigned_to_success, htmlspecialchars_uni($username)));
         }
     }
 
     foreach ($assign_users as $user) {
-        mysupport_recount_assigned_threads($user);
+        recount_assigned_threads($user);
     }
 
     return true;
@@ -1145,7 +1150,7 @@ function mysupport_change_assign(array $thread_info, int $assign, bool $multiple
  * @param int The ID of the new priority.
  * @param bool If this is changing the priority of multiple threads.
  **/
-function mysupport_change_priority(array $thread_info, int $priority, bool $multiple = false): bool
+function change_priority(array $thread_info, int $priority, bool $multiple = false): bool
 {
     global $db, $cache, $lang;
 
@@ -1178,11 +1183,11 @@ function mysupport_change_priority(array $thread_info, int $priority, bool $mult
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(8, $lang->sprintf($lang->priority_remove_success_multi, count($thread_info)));
-            mysupport_redirect_message($lang->sprintf($lang->priority_remove_success_multi, count($thread_info)));
+            mod_log_action(8, $lang->sprintf($lang->priority_remove_success_multi, count($thread_info)));
+            redirect_message($lang->sprintf($lang->priority_remove_success_multi, count($thread_info)));
         } else {
-            mysupport_mod_log_action(8, $lang->sprintf($lang->priority_remove_success, $old_priority));
-            mysupport_redirect_message(
+            mod_log_action(8, $lang->sprintf($lang->priority_remove_success, $old_priority));
+            redirect_message(
                 $lang->sprintf($lang->priority_remove_success, htmlspecialchars_uni($old_priority))
             );
         }
@@ -1198,25 +1203,25 @@ function mysupport_change_priority(array $thread_info, int $priority, bool $mult
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(
+            mod_log_action(
                 6,
                 $lang->sprintf($lang->priority_change_success_to_multi, count($thread_info), $new_priority)
             );
-            mysupport_redirect_message(
+            redirect_message(
                 $lang->sprintf($lang->priority_change_success_to_multi, count($thread_info), $new_priority)
             );
         } else {
             if ($thread_info['priority'] == 0) {
-                mysupport_mod_log_action(7, $lang->sprintf($lang->priority_change_success_to, $new_priority));
-                mysupport_redirect_message(
+                mod_log_action(7, $lang->sprintf($lang->priority_change_success_to, $new_priority));
+                redirect_message(
                     $lang->sprintf($lang->priority_change_success_to, htmlspecialchars_uni($new_priority))
                 );
             } else {
-                mysupport_mod_log_action(
+                mod_log_action(
                     7,
                     $lang->sprintf($lang->priority_change_success_fromto, $old_priority, $new_priority)
                 );
-                mysupport_redirect_message(
+                redirect_message(
                     $lang->sprintf(
                         $lang->priority_change_success_fromto,
                         htmlspecialchars_uni($old_priority),
@@ -1237,7 +1242,7 @@ function mysupport_change_priority(array $thread_info, int $priority, bool $mult
  * @param int The ID of the new category.
  * @param bool If this is changing the priority of multiple threads.
  **/
-function mysupport_change_category(array $thread_info, int $category, bool $multiple = false): bool
+function change_category(array $thread_info, int $category, bool $multiple = false): bool
 {
     global $db, $lang;
 
@@ -1268,11 +1273,11 @@ function mysupport_change_category(array $thread_info, int $category, bool $mult
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(10, $lang->sprintf($lang->category_remove_success_multi, count($thread_info)));
-            mysupport_redirect_message($lang->sprintf($lang->category_remove_success_multi, count($thread_info)));
+            mod_log_action(10, $lang->sprintf($lang->category_remove_success_multi, count($thread_info)));
+            redirect_message($lang->sprintf($lang->category_remove_success_multi, count($thread_info)));
         } else {
-            mysupport_mod_log_action(10, $lang->sprintf($lang->category_remove_success, $old_category));
-            mysupport_redirect_message(
+            mod_log_action(10, $lang->sprintf($lang->category_remove_success, $old_category));
+            redirect_message(
                 $lang->sprintf($lang->category_remove_success, htmlspecialchars_uni($old_category))
             );
         }
@@ -1283,11 +1288,11 @@ function mysupport_change_category(array $thread_info, int $category, bool $mult
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(
+            mod_log_action(
                 9,
                 $lang->sprintf($lang->category_change_success_to_multi, count($thread_info), $new_category)
             );
-            mysupport_redirect_message(
+            redirect_message(
                 $lang->sprintf(
                     $lang->category_change_success_to_multi,
                     count($thread_info),
@@ -1296,16 +1301,16 @@ function mysupport_change_category(array $thread_info, int $category, bool $mult
             );
         } else {
             if ($thread_info['prefix'] == 0) {
-                mysupport_mod_log_action(9, $lang->sprintf($lang->category_change_success_to, $new_category));
-                mysupport_redirect_message(
+                mod_log_action(9, $lang->sprintf($lang->category_change_success_to, $new_category));
+                redirect_message(
                     $lang->sprintf($lang->category_change_success_to, htmlspecialchars_uni($new_category))
                 );
             } else {
-                mysupport_mod_log_action(
+                mod_log_action(
                     9,
                     $lang->sprintf($lang->category_change_success_fromto, $old_category, $new_category)
                 );
-                mysupport_redirect_message(
+                redirect_message(
                     $lang->sprintf(
                         $lang->category_change_success_fromto,
                         htmlspecialchars_uni($old_category),
@@ -1347,11 +1352,11 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(13, $lang->sprintf($lang->issupportthread_1_multi, count($thread_info)));
-            mysupport_redirect_message($lang->sprintf($lang->issupportthread_1_multi, count($thread_info)));
+            mod_log_action(13, $lang->sprintf($lang->issupportthread_1_multi, count($thread_info)));
+            redirect_message($lang->sprintf($lang->issupportthread_1_multi, count($thread_info)));
         } else {
-            mysupport_mod_log_action(13, $lang->issupportthread_1);
-            mysupport_redirect_message($lang->issupportthread_1);
+            mod_log_action(13, $lang->issupportthread_1);
+            redirect_message($lang->issupportthread_1);
         }
     } else {
         $update = [
@@ -1360,11 +1365,11 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
         $db->update_query('threads', $update, $where_sql);
 
         if ($multiple) {
-            mysupport_mod_log_action(13, $lang->sprintf($lang->issupportthread_0_multi, count($thread_info)));
-            mysupport_redirect_message($lang->sprintf($lang->issupportthread_0_multi, count($thread_info)));
+            mod_log_action(13, $lang->sprintf($lang->issupportthread_0_multi, count($thread_info)));
+            redirect_message($lang->sprintf($lang->issupportthread_0_multi, count($thread_info)));
         } else {
-            mysupport_mod_log_action(13, $lang->issupportthread_0);
-            mysupport_redirect_message($lang->issupportthread_0);
+            mod_log_action(13, $lang->issupportthread_0);
+            redirect_message($lang->issupportthread_0);
         }
     }
 
@@ -1377,7 +1382,7 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
  * @param int The ID of the log action.
  * @param string The message to add.
  **/
-function mysupport_mod_log_action(int $id, string $message): bool
+function mod_log_action(int $id, string $message): bool
 {
     global $mybb, $mod_log_action;
 
@@ -1401,7 +1406,7 @@ function mysupport_mod_log_action(int $id, string $message): bool
  *
  * @param string The message to add.
  **/
-function mysupport_redirect_message(string $message): bool
+function redirect_message(string $message): bool
 {
     global $redirect;
 
@@ -1421,7 +1426,7 @@ function mysupport_redirect_message(string $message): bool
  * @param int The FID the thread is in.
  * @param int The TID of the thread.
  **/
-function mysupport_send_assign_pm(int $uid, int $fid, int $tid): bool
+function send_assign_pm(int $uid, int $fid, int $tid): bool
 {
     global $mybb, $db, $lang;
 
@@ -1529,7 +1534,7 @@ function recount_technical_threads(): bool
 /**
  * Recount how many threads a user has been assigned.
  **/
-function mysupport_recount_assigned_threads(int $uid): bool
+function recount_assigned_threads(int $uid): bool
 {
     global $db, $cache;
 
@@ -1560,7 +1565,7 @@ function mysupport_recount_assigned_threads(int $uid): bool
  * @param int The UID of the user we're adding/removing points to/from.
  * @param bool Is this removing points? Defaults to false as we'd be adding them most of the time.
  **/
-function mysupport_update_points(float $points, int $uid, bool $removing = false): bool
+function update_points(float $points, int $uid, bool $removing = false): bool
 {
     global $mybb, $db;
 

@@ -21,13 +21,9 @@ namespace MySupport\Admin;
 
 use DirectoryIterator;
 
-use JetBrains\PhpStorm\NoReturn;
-
 use function MySupport\Core\updateCache;
 use function MySupport\Core\loadLanguage;
-
 use function MySupport\MyAlerts\getAvailableLocations;
-
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 
 use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;

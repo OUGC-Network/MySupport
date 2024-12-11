@@ -17,7 +17,6 @@
 
 declare(strict_types=1);
 
-// Die if IN_MYBB is not defined, for security reasons.
 use function MySupport\Admin\pluginActivation;
 use function MySupport\Admin\pluginDeactivation;
 use function MySupport\Admin\pluginInformation;
