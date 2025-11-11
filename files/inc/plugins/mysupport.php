@@ -17,14 +17,14 @@
 
 declare(strict_types=1);
 
+use function MySupport\Core\addHooks;
+use function MySupport\Core\updateCache;
 use function MySupport\Admin\pluginActivation;
 use function MySupport\Admin\pluginDeactivation;
 use function MySupport\Admin\pluginInformation;
 use function MySupport\Admin\pluginInstallation;
 use function MySupport\Admin\pluginIsInstalled;
 use function MySupport\Admin\pluginUninstallation;
-use function MySupport\Core\addHooks;
-use function MySupport\Core\updateCache;
 use function MySupport\MyAlerts\initLocations;
 use function MySupport\MyAlerts\initMyalerts;
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;

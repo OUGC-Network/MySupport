@@ -42,6 +42,8 @@ use function MySupport\Core\change_priority;
 use function MySupport\Core\redirect_message;
 use function MySupport\Core\update_points;
 
+use const MySupport\Core\REVOKE_DENIED_SUPPORT;
+
 function global_start(): void
 {
     global $templatelist, $mybb;
@@ -581,7 +583,7 @@ function modcp_start(): void
                     $mysupport_cache['deniedReasons']
                 ) && $deniedsupportreason !== REVOKE_DENIED_SUPPORT && $deniedsupportreason) {
                 error($lang->support_denial_reason_invalid_reason, $lang->mysupport_error);
-            } elseif ($deniedsupportreason === \MySupport\Core\REVOKE_DENIED_SUPPORT) {
+            } elseif ($deniedsupportreason === REVOKE_DENIED_SUPPORT) {
                 $update = [
                     'deniedsupport' => 0,
                     'deniedsupportreason' => 0,
@@ -1629,6 +1631,18 @@ function newthread_start(): void
         }
         error($deniedsupport_message, $lang->mysupport_error);
     }
+}
+
+function newthread_end(): void
+{
+    global $mybb;
+    global $forum, $message;
+
+    if ($mybb->request_method !== 'get' || empty($forum['mysupport']) || !empty($message)) {
+        return;
+    }
+
+    $message = htmlspecialchars_uni($forum['mysupport_message_placeholder']);;
 }
 
 // highlight the best answer from the thread and show the status of the thread in each post

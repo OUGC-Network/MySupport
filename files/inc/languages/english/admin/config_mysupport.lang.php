@@ -272,6 +272,7 @@ $l['mysupport_forums_allowbestanswerstatus'] = 'Enable the best answer feature i
 $l['mysupport_forums_allowonholdstatus'] = 'Enable the on hold feature in this forum.';
 $l['mysupport_forums_allowhighlight'] = 'Enable posts by moderators to be highlighted in this forum.';
 $l['mysupport_forums_allownonsupportthreads'] = 'Enable threads to be marked as non-support threads.';
+$l['mysupport_forums_mysupport_message_placeholder'] = 'New Thread Post Message Placeholder';
 
 $l['mysupport_moderators_canmarksolved'] = $l['mysupport_usergroups_canmarksolved'];
 $l['mysupport_moderators_canmarktechnical'] = 'Can mark threads as technical or not technical.';

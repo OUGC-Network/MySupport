@@ -19,6 +19,8 @@ declare(strict_types=1);
 
 use function MySupport\Core\_get_friendly_status;
 use function MySupport\Core\loadLanguage;
+use function MySupport\Core\priority_insert;
+use function MySupport\Core\priorityUpdate;
 use function MySupport\Core\updateCache;
 
 use const MySupport\Core\CACHE_TYPE_DENIED_REASONS;
@@ -73,7 +75,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             ),
         ];
 
-        \MySupport\Core\priority_insert($insert);
+        priority_insert($insert);
 
         updateCache(CACHE_TYPE_PRIORITIES);
 
@@ -103,7 +105,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             ),
         ];
 
-        \MySupport\Core\priorityUpdate($update, $pid);
+        priorityUpdate($update, $pid);
 
         updateCache(CACHE_TYPE_PRIORITIES);
 
@@ -148,7 +150,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             'type' => 'deniedreason'
         ];
 
-        \MySupport\Core\priority_insert($insert);
+        priority_insert($insert);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
 
@@ -169,7 +171,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             'description' => $db->escape_string($mybb->get_input('description'))
         ];
 
-        \MySupport\Core\priorityUpdate($update, $drid);
+        priorityUpdate($update, $drid);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
 

@@ -17,6 +17,9 @@
 
 declare(strict_types=1);
 
+use function MySupport\Core\enabledForums;
+use function MySupport\Core\priority_insert;
+
 function task_mysupport(array $task): array
 {
     global $mybb, $db, $lang;
@@ -28,7 +31,7 @@ function task_mysupport(array $task): array
     // if this is empty or 0, it'll affect all threads
     if ($mybb->settings['mysupport_taskautosolvetime'] > 0) {
         $cut = TIME_NOW - intval($mybb->settings['mysupport_taskautosolvetime']);
-        $mysupport_forums = implode(',', array_map('intval', \MySupport\Core\enabledForums()));
+        $mysupport_forums = implode(',', array_map('intval', enabledForums()));
 
         $threads_solved = false;
 
@@ -162,7 +165,7 @@ function task_mysupport(array $task): array
                     'extra' => TIME_NOW
                 ];
 
-                \MySupport\Core\priority_insert($insert);
+                priority_insert($insert);
 
                 // get the latest 3 backups
                 $query = $db->simple_select(

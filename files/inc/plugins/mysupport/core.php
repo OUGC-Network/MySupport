@@ -797,9 +797,9 @@ function get_categories(array $forum): array
         if (!empty($forums_concat_sql)) {
             $forums_concat_sql .= ' OR ';
         }
-        $forums_concat_sql .= "CONCAT(',',allowed_forums,',') LIKE '%," . intval($parent) . ",%'";
+        $forums_concat_sql .= "CONCAT(',',forums,',') LIKE '%," . intval($parent) . ",%'";
     }
-    $forums_concat_sql = '(' . $forums_concat_sql . " OR allowed_forums = '-1')";
+    $forums_concat_sql = '(' . $forums_concat_sql . " OR forums = '-1')";
 
     $usergroup_list = $mybb->user['usergroup'];
     if (!empty($mybb->user['additionalgroups'])) {
@@ -810,9 +810,9 @@ function get_categories(array $forum): array
         if (!empty($groups_concat_sql)) {
             $groups_concat_sql .= ' OR ';
         }
-        $groups_concat_sql .= "CONCAT(',',allowed_groups,',') LIKE '%," . intval($usergroup) . ",%'";
+        $groups_concat_sql .= "CONCAT(',',`groups`,',') LIKE '%," . intval($usergroup) . ",%'";
     }
-    $groups_concat_sql = '(' . $groups_concat_sql . " OR allowed_groups = '-1')";
+    $groups_concat_sql = '(' . $groups_concat_sql . " OR `groups` = '-1')";
 
     $query = $db->simple_select('threadprefixes', 'pid, prefix', "{$forums_concat_sql} AND {$groups_concat_sql}");
     $categories = [];

@@ -21,15 +21,17 @@ namespace MySupport\Admin;
 
 use DirectoryIterator;
 
+use function MySupport\Core\priority_insert;
+use function MySupport\Core\priorityUpdate;
 use function MySupport\Core\updateCache;
 use function MySupport\Core\loadLanguage;
 use function MySupport\MyAlerts\getAvailableLocations;
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 
-use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;
 use const MySupport\Core\ROOT;
 use const MySupport\Core\VERSION;
 use const MySupport\Core\VERSION_CODE;
+use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;
 
 const TASK_FILE_DEACTIVATE = 0;
 
@@ -126,6 +128,11 @@ const FIELDS_DATA = [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0,
+        ],
+        'mysupport_message_placeholder' => [
+            'type' => 'TEXT',
+            'null' => true,
+            'formType' => 'textarea',
         ],
     ],
     //mysupportmove should probably be left for moderation tools
@@ -591,7 +598,7 @@ function pluginActivation(): void
     $query = $db->simple_select('mysupport', 'mid', "type='priority'");
 
     while ($priorityData = $db->fetch_array($query)) {
-        \MySupport\Core\priorityUpdate(['type' => DATABASE_ROW_TYPE_PRIORITY], (int)$priorityData['mid']);
+        priorityUpdate(['type' => DATABASE_ROW_TYPE_PRIORITY], (int)$priorityData['mid']);
     }
 
     /*~*~* RUN UPDATES END *~*~*/
@@ -870,7 +877,7 @@ function pluginInstallation(): void
     }
 
     foreach ($priorityItems as $priorityItem) {
-        \MySupport\Core\priority_insert([
+        priority_insert([
             'type' => DATABASE_ROW_TYPE_PRIORITY,
             'name' => $db->escape_string($priorityItem['name']),
             'description' => $db->escape_string($priorityItem['description']),
@@ -907,7 +914,7 @@ function pluginIsInstalled(): bool
 
         $isInstalledEach = true;
 
-        foreach (TABLES_DATA as $tableName => $tableColumns) {
+        foreach (array_merge(TABLES_DATA, FIELDS_DATA) as $tableName => $tableColumns) {
             $isInstalledEach = $db->table_exists($tableName) && $isInstalledEach;
 
             if (!$isInstalledEach) {

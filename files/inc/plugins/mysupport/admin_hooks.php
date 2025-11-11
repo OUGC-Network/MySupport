@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace MySupport\AdminHooks;
 
+use Form;
 use MyBB;
 
 use function MySupport\Core\loadLanguage;
@@ -27,8 +28,8 @@ use function MySupport\MyAlerts\getAvailableLocations;
 use function MySupport\MyAlerts\installLocation;
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 
-use const MySupport\Admin\FIELDS_DATA;
 use const MySupport\Core\ROOT;
+use const MySupport\Admin\FIELDS_DATA;
 
 function admin_config_plugins_begin01()
 {
@@ -219,6 +220,10 @@ function admin_user_groups_edit_commit(): void
 
 function admin_formcontainer_output_row(array &$formArguments): array
 {
+    /**
+     *
+     * @var Form $form
+     */
     global $lang, $mybb, $form, $forum_data, $form_container, $mod_data;
     global $run_module, $action_file;
 
@@ -255,12 +260,22 @@ function admin_formcontainer_output_row(array &$formArguments): array
                 continue;
             }
 
-            $mySupportOptions[] = $form->generate_check_box(
-                $fieldName,
-                1,
-                $lang->{'mysupport_forums_' . $fieldName},
-                ['id' => $fieldName, 'checked' => $forum_data[$fieldName]]
-            );
+            switch ($fieldDefinition['formType'] ?? '') {
+                case 'textarea':
+                    $mySupportOptions[] = $lang->{'mysupport_forums_' . $fieldName} . '<br />' . $form->generate_text_area(
+                            $fieldName,
+                            $forum_data[$fieldName]
+                        );
+
+                    break;
+                default:
+                    $mySupportOptions[] = $form->generate_check_box(
+                        $fieldName,
+                        1,
+                        $lang->{'mysupport_forums_' . $fieldName},
+                        ['id' => $fieldName, 'checked' => $forum_data[$fieldName]]
+                    );
+            }
         }
     }
 
@@ -287,7 +302,14 @@ function admin_forum_management_edit_commit(): void
 
     foreach (FIELDS_DATA['forums'] as $fieldName => $fieldDefinition) {
         if (isset($mybb->input[$fieldName])) {
-            $updateData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+            switch ($fieldDefinition['type']) {
+                case 'TEXT':
+                    $updateData[$fieldName] = $db->escape_string($mybb->get_input($fieldName));;
+
+                    break;
+                default:
+                    $updateData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+            }
         }
     }
 
