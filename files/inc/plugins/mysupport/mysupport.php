@@ -37,7 +37,7 @@ function mysupport_settings_info(): array
 /**
  * Update the display order of settings if settings
  **/
-function mysupport_update_setting_orders(): bool
+function mysupport_update_setting_orders(): void
 {
     global $db;
 
@@ -53,6 +53,4 @@ function mysupport_update_setting_orders(): bool
     }
 
     rebuild_settings();
-
-    return true;
 }

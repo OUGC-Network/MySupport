@@ -24,7 +24,7 @@ use PostDataHandler;
 
 use function MySupport\Core\_change_hold;
 use function MySupport\Core\_change_status;
-use function MySupport\Core\_forums;
+use function MySupport\Core\enabledForums;
 use function MySupport\Core\_get_count;
 use function MySupport\Core\_get_display_status;
 use function MySupport\Core\_get_friendly_status;
@@ -42,7 +42,7 @@ use function MySupport\Core\change_priority;
 use function MySupport\Core\redirect_message;
 use function MySupport\Core\update_points;
 
-function global_start(): bool
+function global_start(): void
 {
     global $templatelist, $mybb;
 
@@ -69,13 +69,11 @@ function global_start(): bool
     }
     /*if(\MySupport\MyAlerts\myalertsIsIntegrable())
 	{
-		if($mybb->user['uid'])
+		if($currentUserID)
 		{
             \MySupport\MyAlerts\registerMyalertsFormatters();
         }
     }*/
-
-    return true;
 }
 
 function build_friendly_wol_location_end(array &$plugin_array): array
@@ -103,6 +101,8 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
         return $data;
     }
 
+    $pid = 0;
+
     // if we're editing a post, see if it's the last post in the thread and was written by the thread poster
     if ($posthandler->method == 'update') {
         $post = get_post($posthandler->data['pid']);
@@ -115,7 +115,7 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
             "tid = '" . intval($thread_tid) . "'",
             ['order_by' => 'dateline', 'order_dir' => 'DESC', 'limit' => 1]
         );
-        $pid = $db->fetch_field($query, 'pid');
+        $pid = (int)$db->fetch_field($query, 'pid');
         $posthandler->data['uid'] = $posthandler->data['edit_uid'];
     } else {
         $thread = get_thread($posthandler->data['tid']);
@@ -123,11 +123,11 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
         $thread_uid = $thread['uid'];
     }
 
-    // the user submitting this data is the author of the thread
+    // the user submitting this data is the author of the thread,
     // and they're either making a new reply
     // or they're editing the last post in the thread, which is theirs
     // take the thread off hold, as they've made an update
-    if ($posthandler->data['uid'] == $thread_uid && ($posthandler->method == 'insert' || ($posthandler->method == 'update' && $posthandler->data['pid'] == $pid))) {
+    if ($posthandler->data['uid'] == $thread_uid && ($posthandler->method == 'insert' || ($posthandler->method == 'update' && $posthandler->data['pid'] === $pid))) {
         $update = [
             'onhold' => 0
         ];
@@ -164,8 +164,8 @@ function fetch_wol_activity_end(array &$user_activity): array
     return $user_activity;
 }
 
-// generate CSS classes for the priorities and select the categories, and load inline thread moderation
-function forumdisplay_start(): bool
+// generate CSS classes for the priorities and select the categories and load inline thread moderation
+function forumdisplay_start(): void
 {
     global $mybb;
 
@@ -199,46 +199,39 @@ function forumdisplay_start(): bool
         }
         $mysupport_priority_classes .= "</style>\n";
     }
-
-    return true;
 }
 
-function forumdisplay_end(): bool
+function forumdisplay_end(): void
 {
     global $foruminfo;
 
-    $mysupport_forums = _forums();
-
     // if we're viewing a forum which has MySupport enabled, or we're viewing search results and there's at least 1 MySupport forum, show the MySupport options in the inline moderation menu
-    if ((THIS_SCRIPT == 'forumdisplay.php' && $foruminfo['mysupport']) || (THIS_SCRIPT == 'search.php' && !empty($mysupport_forums))) {
+    if ((THIS_SCRIPT == 'forumdisplay.php' && $foruminfo['mysupport']) || (THIS_SCRIPT == 'search.php' && enabledForums(
+            ))) {
         inline_thread_moderation();
     }
-
-    return true;
 }
 
-function search_results_start(): bool
+function search_results_start(): void
 {
     forumdisplay_start();
-
-    return true;
 }
 
 // show the status of a thread for each thread on the forum display or a list of search results
-function forumdisplay_thread(): bool
+function forumdisplay_thread(): void
 {
     global $mybb;
 
     global $db, $lang, $templates, $theme, $foruminfo, $thread, $is_mysupport_forum, $mysupport_status, $mysupport_assigned, $mysupport_bestanswer, $priorities, $priority_class, $inline_mod_checkbox;
 
-    // need to reset these outside of the the check for if it's a MySupport forum, otherwise they don't get unset in search results where the forum of the next thread may not be a MySupport forum
+    // need to reset these outside of the check for if it's a MySupport forum, otherwise they don't get unset in search results where the forum of the next thread may not be a MySupport forum
     $mysupport_status = '';
     $priority_class = '';
     $mysupport_assigned = '';
     $mysupport_bestanswer = '';
 
     if ($thread['issupportthread'] != 1 || strpos($thread['closed'], 'moved') !== false) {
-        return false;
+        return;
     }
 
     // this function is called for the thread list on the forum display and the list of threads for search results, however the source of the fid is different
@@ -251,6 +244,8 @@ function forumdisplay_thread(): bool
     elseif (THIS_SCRIPT == 'search.php') {
         $fid = $thread['fid'];
     }
+
+    $currentUserID = (int)$mybb->user['uid'];
 
     if ($foruminfo['mysupport']) {
         if ($thread['priority'] != 0 && $thread['visible'] == 1) {
@@ -265,18 +260,18 @@ function forumdisplay_thread(): bool
         // the only thing we might want to do with sticky threads is to give them a priority, to highlight them; they're not going to have a status or be assigned to anybody
         // after we've done the priority, we can exit
         if ($thread['sticky'] == 1) {
-            return false;
+            return;
         }
 
         $mysupport_status = _get_display_status(
-            $thread['status'],
-            $thread['onhold'],
-            $thread['statustime'],
-            $thread['uid']
+            (int)$thread['status'],
+            (int)$thread['onhold'],
+            (int)$thread['statustime'],
+            (int)$thread['uid']
         );
 
         if ($thread['assign'] != 0) {
-            if ($thread['assign'] == $mybb->user['uid']) {
+            if ($thread['assign'] == $currentUserID) {
                 $mysupport_assigned = eval($templates->render('mysupport_assigned_toyou'));
             } else {
                 $mysupport_assigned = eval($templates->render('mysupport_assigned'));
@@ -294,19 +289,15 @@ function forumdisplay_thread(): bool
     } elseif (isset($inline_mod_checkbox)) {
         $inline_mod_checkbox = str_replace('{priority_class}', '', $inline_mod_checkbox);
     }
-
-    return true;
 }
 
-function search_results_thread(): bool
+function search_results_thread(): void
 {
     forumdisplay_thread();
-
-    return true;
 }
 
 // show a notice for technical and/or assigned threads
-function global_intermediate(): bool
+function global_intermediate(): void
 {
     global $mybb;
 
@@ -317,7 +308,7 @@ function global_intermediate(): bool
     // this function does both the technical threads alert and the assigned threads alert
     // both similar enough to keep in one function but different enough to be separated into two chunks
 
-    // some code that's used in both, work out now
+    // some code that's used in both works out now
 
     // check for THIS_SCRIPT so it doesn't execute if we're viewing the technical threads list in the MCP or support threads in the UCP with an FID
     if (
@@ -330,10 +321,10 @@ function global_intermediate(): bool
         } else {
             $tid = $mybb->get_input('tid', MyBB::INPUT_INT);
             $thread_info = get_thread($tid);
-            $fid = $thread_info['fid'];
+            $fid = (int)$thread_info['fid'];
         }
     } else {
-        $fid = '';
+        $fid = 0;
     }
 
     // the technical threads notice
@@ -342,6 +333,8 @@ function global_intermediate(): bool
     if (isTechnicalStatusEnabled() && $mybb->settings['mysupport_technicalnotice'] != 'off') {
         // this user is in an allowed usergroup?
         if ($mybb->usergroup['canseetechnotice']) {
+            $technical_count_global = 0;
+
             // the notice is showing on all pages
             if ($mybb->settings['mysupport_technicalnotice'] == 'global') {
                 // count for the entire forum
@@ -362,7 +355,7 @@ function global_intermediate(): bool
                 $notice_url .= '&amp;fid=' . $fid;
             }
 
-            // now to show the notice itself
+            // now, to show the notice itself,
             // it's showing globally
             if ($mybb->settings['mysupport_technicalnotice'] == 'global') {
                 if ($technical_count_global == 1) {
@@ -375,15 +368,15 @@ function global_intermediate(): bool
                 if (!empty($fid) && $technical_count_forum > 0) {
                     $notice_text = $lang->sprintf(
                         $lang->technical_global_forum,
-                        intval($technical_count_global),
+                        $technical_count_global,
                         $threads_text,
-                        intval($technical_count_forum)
+                        $technical_count_forum
                     );
-                } // either there's no forum/thread, or there is but there's no tech threads in this forum, just show the global count
+                } // either there's no forum/thread, or there is but there are no tech threads in this forum, just show the global count
                 else {
                     $notice_text = $lang->sprintf(
                         $lang->technical_global,
-                        intval($technical_count_global),
+                        $technical_count_global,
                         $threads_text
                     );
                 }
@@ -399,11 +392,11 @@ function global_intermediate(): bool
                     $threads_text = $lang->mysupport_threads;
                 }
 
-                // we're inside a forum/thread and the count for this forum, generated above, is more than 0, show the forum count
+                // we're inside a forum/thread, and the count for this forum, generated above, is more than 0, show the forum count
                 if (!empty($fid) && $technical_count_forum > 0) {
                     $notice_text = $lang->sprintf(
                         $lang->technical_forum,
-                        intval($technical_count_forum),
+                        $technical_count_forum,
                         $threads_text
                     );
                     $mysupport_tech_notice = eval($templates->render('mysupport_notice'));
@@ -425,31 +418,32 @@ function global_intermediate(): bool
 
                 $notice_url = 'usercp.php?action=assignedthreads';
 
+                $assigned_forum = 0;
+
                 if (!empty($fid)) {
                     $assigned_forum = _get_count('assigned', $fid);
                 }
+
                 if ($assigned_forum > 0) {
                     $notice_text = $lang->sprintf(
                         $lang->assign_forum,
-                        intval($assigned),
+                        $assigned,
                         $threads_text,
-                        intval($assigned_forum)
+                        $assigned_forum
                     );
                     $notice_url .= '&amp;fid=' . $fid;
                 } else {
-                    $notice_text = $lang->sprintf($lang->assign_global, intval($assigned), $threads_text);
+                    $notice_text = $lang->sprintf($lang->assign_global, $assigned, $threads_text);
                 }
 
                 $mysupport_assign_notice = eval($templates->render('mysupport_notice'));
             }
         }
     }
-
-    return true;
 }
 
 // show MySupport information on a user's profile
-function member_profile_end(): bool
+function member_profile_end(): void
 {
     global $mybb;
 
@@ -460,14 +454,13 @@ function member_profile_end(): bool
     $something_to_show = false;
 
     if ($mybb->settings['mysupport_enablebestanswer']) {
-        $mysupport_forums = implode(',', array_map('intval', _forums()));
         $query = $db->write_query(
             '
 			SELECT COUNT(*) AS bestanswers
 			FROM ' . TABLE_PREFIX . 'threads t
 			LEFT JOIN ' . TABLE_PREFIX . 'posts p
 			ON (t.bestanswer = p.pid)
-			WHERE t.fid IN (' . $db->escape_string($mysupport_forums) . ")
+			WHERE t.fid IN (' . $db->escape_string(implode(',', enabledForums())) . ")
 			AND p.uid = '" . intval($memprofile['uid']) . "'
 		"
         );
@@ -502,11 +495,9 @@ function member_profile_end(): bool
     if ($something_to_show) {
         $mysupport_info = eval($templates->render('mysupport_member_profile'));
     }
-
-    return true;
 }
 
-function modcp_start(): bool
+function modcp_start(): void
 {
     global $mybb;
 
@@ -522,41 +513,58 @@ function modcp_start(): bool
         add_breadcrumb($lang->nav_modcp, 'modcp.php');
         add_breadcrumb($lang->support_denial, 'modcp.php?action=supportdenial');
 
+        $currentUserID = (int)$mybb->user['uid'];
+
         if ($mybb->get_input('do') == 'do_denysupport') {
             verify_post_check($mybb->get_input('my_post_key'));
 
-            if ($mybb->settings['mysupport_enablesupportdenial']) {
+            if (empty($mybb->settings['mysupport_enablesupportdenial'])) {
                 error($lang->support_denial_not_enabled, $lang->mysupport_error);
             }
+
+            $uid = 0;
 
             // get username from UID
             // this is if we're revoking via the list of denied users, we specify a UID here
             if ($mybb->get_input('uid', MyBB::INPUT_INT)) {
-                $uid = $mybb->get_input('uid', MyBB::INPUT_INT);
-                $user = get_user($uid);
-                $username = $user['username'];
+                $user = get_user($mybb->get_input('uid', MyBB::INPUT_INT));
+
+                if (!empty($user['username'])) {
+                    $uid = (int)$user['uid'];
+
+                    $username = $user['username'];
+                }
             }
             // get UID from username
             // this is if we're denying support via the form, where we give a username
             elseif ($mybb->get_input('username')) {
-                $username = $db->escape_string($mybb->get_input('username'));
-                $query = $db->simple_select('users', 'uid', "username = '{$username}'");
-                $uid = $db->fetch_field($query, 'uid');
+                $user = get_user_by_username($mybb->get_input('username'), ['fields' => ['username']]);
+
+                if (!empty($user['username'])) {
+                    $uid = (int)$user['uid'];
+
+                    $username = $user['username'];
+                }
             }
-            if (!$uid || !$username) {
+
+            if (!$uid || !isset($username)) {
                 error($lang->support_denial_reason_invalid_user, $lang->mysupport_error);
+
+                exit;
             }
+
+            $deniedsupportreason = 0;
 
             if ($mybb->get_input('deniedsupportreason', MyBB::INPUT_INT)) {
                 $deniedsupportreason = $mybb->get_input('deniedsupportreason', MyBB::INPUT_INT);
-            } else {
-                $deniedsupportreason = 0;
             }
 
-            if ($mybb->$mybb->get_input('tid', MyBB::INPUT_INT)) {
+            $fid = $tid = 0;
+
+            if ($mybb->get_input('tid', MyBB::INPUT_INT)) {
                 $tid = $mybb->get_input('tid', MyBB::INPUT_INT);
                 $thread_info = get_thread($tid);
-                $fid = $thread_info['fid'];
+                $fid = (int)$thread_info['fid'];
 
                 $redirect_url = get_thread_link($tid);
             } else {
@@ -571,26 +579,25 @@ function modcp_start(): bool
             if (!array_key_exists(
                     $deniedsupportreason,
                     $mysupport_cache['deniedReasons']
-                ) && $deniedsupportreason != -1 && $deniedsupportreason != 0) {
+                ) && $deniedsupportreason !== REVOKE_DENIED_SUPPORT && $deniedsupportreason) {
                 error($lang->support_denial_reason_invalid_reason, $lang->mysupport_error);
-            } elseif ($deniedsupportreason == -1) {
+            } elseif ($deniedsupportreason === \MySupport\Core\REVOKE_DENIED_SUPPORT) {
                 $update = [
                     'deniedsupport' => 0,
                     'deniedsupportreason' => 0,
                     'deniedsupportuid' => 0
                 ];
-                $db->update_query('users', $update, "uid = '" . intval($uid) . "'");
+                $db->update_query('users', $update, "uid = '" . $uid . "'");
 
                 $update = [
                     'closed' => 0,
                     'closedbymysupport' => 0
                 ];
-                $mysupport_forums = implode(',', array_map('intval', _forums()));
                 $db->update_query(
                     'threads',
                     $update,
                     "uid = '" . intval($uid) . "' AND fid IN (" . $db->escape_string(
-                        $mysupport_forums
+                        implode(',', enabledForums())
                     ) . ") AND closed = '1' AND closedbymysupport = '2'"
                 );
 
@@ -604,29 +611,29 @@ function modcp_start(): bool
             } else {
                 $update = [
                     'deniedsupport' => 1,
-                    'deniedsupportreason' => intval($deniedsupportreason),
-                    'deniedsupportuid' => intval($mybb->user['uid'])
+                    'deniedsupportreason' => $deniedsupportreason,
+                    'deniedsupportuid' => $currentUserID
                 ];
-                $db->update_query('users', $update, "uid = '" . intval($uid) . "'");
+                $db->update_query('users', $update, "uid = '" . $uid . "'");
 
                 if ($mybb->settings['mysupport_closewhendenied']) {
                     $update = [
                         'closed' => 1,
                         'closedbymysupport' => 2
                     ];
-                    $mysupport_forums = implode(',', array_map('intval', _forums()));
 
                     $db->update_query(
                         'threads',
                         $update,
                         "uid = '" . intval($uid) . "' AND fid IN (" . $db->escape_string(
-                            $mysupport_forums
+                            implode(',', enabledForums())
                         ) . ") AND closed = '0'"
                     );
                 }
 
-                if ($deniedsupportreason != 0) {
-                    $deniedsupportreason = $db->fetch_field($query, 'name');
+                if (!empty($mysupport_cache['deniedReasons'][$deniedsupportreason])) {
+                    $deniedsupportreason = $mysupport_cache['deniedReasons'][$deniedsupportreason];
+
                     mod_log_action(
                         11,
                         $lang->sprintf($lang->deny_support_mod_log_reason, $username, $deniedsupportreason)
@@ -643,14 +650,14 @@ function modcp_start(): bool
             }
             if (!empty($mod_log_action)) {
                 $mod_log_data = [
-                    'fid' => intval($fid),
-                    'tid' => intval($tid)
+                    'fid' => $fid,
+                    'tid' => $tid
                 ];
                 log_moderator_action($mod_log_data, $mod_log_action);
             }
             redirect($redirect_url, $redirect);
         } elseif ($mybb->get_input('do') == 'denysupport') {
-            if ($mybb->settings['mysupport_enablesupportdenial']) {
+            if (empty($mybb->settings['mysupport_enablesupportdenial'])) {
                 error($lang->support_denial_not_enabled, $lang->mysupport_error);
             }
 
@@ -770,6 +777,8 @@ function modcp_start(): bool
             $multipage = (string)multipage($userscount, $limit, $mybb->get_input('page', 1), $url);
 
             if ($db->num_rows($query) > 0) {
+                $denied_users = '';
+
                 while ($denieduser = $db->fetch_array($query)) {
                     $bgcolor = alt_trow();
 
@@ -797,11 +806,9 @@ function modcp_start(): bool
             output_page($deny_support_page);
         }
     }
-
-    return true;
 }
 
-function modcp_start09(): bool
+function modcp_start09(): void
 {
     global $mybb;
 
@@ -874,19 +881,15 @@ function modcp_start09(): bool
             $usercpnav = str_replace('<!--mysupport_nav_option-->', '', $usercpnav);
         }
     }
-
-    return true;
 }
 
-function usercp_menu_built09(): bool
+function usercp_menu_built09(): void
 {
     modcp_start09();
-
-    return true;
 }
 
 // show a list of threads requiring technical attention, assigned threads, or support threads
-function modcp_start20(): bool
+function modcp_start20(): void
 {
     global $mybb;
 
@@ -905,6 +908,8 @@ function modcp_start20(): bool
                         ))) || ($mybb->settings['mysupport_enableassign'] && $mybb->get_input(
                         'action'
                     ) == 'assignedthreads')))) {
+        $currentUserID = (int)$mybb->user['uid'];
+
         // add to navigation
         if (THIS_SCRIPT == 'modcp.php') {
             add_breadcrumb($lang->nav_modcp, 'modcp.php');
@@ -967,8 +972,8 @@ function modcp_start20(): bool
         }
 
         // what forums is this allowed in?
-        $mysupport_forums = _forums();
-        $mysupport_forums = implode(',', array_map('intval', $mysupport_forums));
+        $mysupport_forums = implode(',', enabledForums());
+
         // if this string isn't empty, generate a variable to go in the query
         if (!empty($mysupport_forums)) {
             $list_in_sql = ' AND t.fid IN (' . $db->escape_string($mysupport_forums) . ')';
@@ -993,10 +998,10 @@ function modcp_start20(): bool
                     $query = $db->simple_select(
                         'threads',
                         'status',
-                        "uid = '{$mybb->user['uid']}'{$stats_in_sql}{$stats_where_sql}"
+                        "uid = '{$currentUserID}'{$stats_in_sql}{$stats_where_sql}"
                     );
                 }
-                if ($db->num_rows($query) > 0) {
+                if (isset($query) && $db->num_rows($query) > 0) {
                     $solved_row = $notsolved_row = $technical_row = '';
                     $total_count = $solved_count = $notsolved_count = $technical_count = 0;
                     while ($threads = $db->fetch_array($query)) {
@@ -1038,9 +1043,9 @@ function modcp_start20(): bool
                         }
                     }
 
-                    // get the title for the stats table
+                    // get the title for the stat table
                     if (THIS_SCRIPT == 'modcp.php') {
-                        if (isset($fid)) {
+                        if (isset($forum_info['name'])) {
                             $title_text = $lang->sprintf(
                                 $lang->thread_list_stats_overview_heading_tech_forum,
                                 htmlspecialchars_uni($forum_info['name'])
@@ -1049,7 +1054,7 @@ function modcp_start20(): bool
                             $title_text = $lang->thread_list_stats_overview_heading_tech;
                         }
                     } elseif (THIS_SCRIPT == 'usercp.php') {
-                        if ($fid) {
+                        if (isset($forum_info['name'])) {
                             $title_text = $lang->sprintf(
                                 $lang->thread_list_stats_overview_heading_solved_forum,
                                 htmlspecialchars_uni($forum_info['name'])
@@ -1128,7 +1133,7 @@ function modcp_start20(): bool
 				SELECT t.tid, t.subject, t.fid, t.uid, t.username, t.lastpost, t.lastposter, t.lastposteruid, t.status, t.statusuid, t.statustime, t.assignuid, t.priority, f.name
 				FROM ' . TABLE_PREFIX . 'threads t
 				INNER JOIN ' . TABLE_PREFIX . "forums f
-				ON(t.fid = f.fid AND {$column} = '{$mybb->user['uid']}'{$list_in_sql}{$list_where_sql})
+				ON(t.fid = f.fid AND {$column} = '{$currentUserID}'{$list_in_sql}{$list_where_sql})
 				ORDER BY t.lastpost DESC
 				{$list_limit_sql}
 			"
@@ -1163,7 +1168,7 @@ function modcp_start20(): bool
         }
 
         $threads = '';
-        if ($db->num_rows($query) == 0) {
+        if (!isset($query) || $db->num_rows($query) == 0) {
             $threads = "<tr><td class=\"trow1\" colspan=\"4\" align=\"center\">{$lang->thread_list_no_results}</td></tr>";
         } else {
             while ($thread = $db->fetch_array($query)) {
@@ -1255,7 +1260,7 @@ function modcp_start20(): bool
                             $status_user = get_user($status_uid);
                             $status_user_link = build_profile_link(
                                 htmlspecialchars_uni($status_user['username']),
-                                intval($status_uid)
+                                $status_uid
                             );
                             $status_time .= ', ' . $lang->sprintf($lang->$by_lang, $status_user_link);
                         }
@@ -1291,7 +1296,7 @@ function modcp_start20(): bool
         $view_all = '';
 
         // if we have a forum in the URL, add a table footer with a link to all the threads
-        if ($mybb->get_input('fid', MyBB::INPUT_INT) || (THIS_SCRIPT == 'usercp.php' && !$mybb->get_input('action'))) {
+        if (isset($forum_info['name']) || (THIS_SCRIPT == 'usercp.php' && !$mybb->get_input('action'))) {
             if (THIS_SCRIPT == 'modcp.php') {
                 $thread_list_heading = $lang->sprintf(
                     $lang->thread_list_heading_tech_forum,
@@ -1350,6 +1355,8 @@ function modcp_start20(): bool
             $navigation = "$usercpnav";
         }
 
+        $action = htmlspecialchars_uni($mybb->get_input('action'));
+
         $threadlist_filter_form = eval($templates->render('mysupport_modcp_threadlist_filter_form'));
 
         $threads_list = eval($templates->render('mysupport_threadlist_list'));
@@ -1359,25 +1366,21 @@ function modcp_start20(): bool
             output_page($threads_page);
         }
     }
-
-    return true;
 }
 
-function usercp_start(): bool
+function usercp_start(): void
 {
     modcp_start20();
-
-    return true;
 }
 
 // perform inline thread moderation on multiple threads
-function moderation_start(): bool
+function moderation_start(): void
 {
     global $mybb;
 
     // we're hooking into the start of moderation.php, so if we're not submitting a MySupport action, exit now
     if (strpos($mybb->get_input('action'), 'mysupport') === false) {
-        return false;
+        return;
     }
 
     verify_post_check($mybb->get_input('my_post_key'));
@@ -1407,18 +1410,17 @@ function moderation_start(): bool
 
     $tids = implode(',', array_map('intval', $threads));
     $mysupport_threads = [];
-    // in a list of search results, you could see threads that aren't from a MySupport forum, but the MySupport options will always show in the inline moderation options regardless of this
-    // this is a way of determining which of the selected threads from a list of search results are in a MySupport forum
+    // in a list of search results, you could see threads that aren't from a MySupport forum. However, the MySupport options will always show in the inline moderation options regardless of this
+    //  is a way of determining which of the selected threads from a list of search results are in a MySupport forum
     // this isn't necessary for inline moderation via the forum display, as the options only show in MySupport forums to begin with
     if ($type == 'search') {
         // list of MySupport forums
-        $mysupport_forums = implode(',', array_map('intval', _forums()));
-        // query all the threads that are in the list of TIDs and where the FID is also in the list of MySupport forums and where the thread is set to be a support thread
+        // query all the threads that are in the list of TIDs and where the FID is also in the list of MySupport forums, and where the thread is set to be a support thread
         // this will knock out the non-MySupport threads
         $query = $db->simple_select(
             'threads',
             'tid',
-            'fid IN (' . $db->escape_string($mysupport_forums) . ') AND tid IN (' . $db->escape_string(
+            'fid IN (' . $db->escape_string(implode(',', enabledForums())) . ') AND tid IN (' . $db->escape_string(
                 $tids
             ) . ") AND issupportthread = '1'"
         );
@@ -1547,20 +1549,20 @@ function moderation_start(): bool
     ];
     log_moderator_action($mod_log_data, $mod_log_action);
     redirect($redirect_url, $redirect);
-
-    return true;
 }
 
 // show a message if someone is going to bump a thread that is solved and isn't their thread
-function newreply_start(): bool
+function newreply_start(): void
 {
     global $mybb;
 
     global $lang, $thread, $forum, $mysupport_solved_bump_message;
 
     if ($forum['mysupport']) {
+        $currentUserID = (int)$mybb->user['uid'];
+
         if ($mybb->settings['mysupport_bumpnotice']) {
-            if ($thread['status'] == 1 && $thread['uid'] != $mybb->user['uid'] && !($mybb->usergroup['canmarksolved'] || is_moderator(
+            if ($thread['status'] == 1 && $thread['uid'] != $currentUserID && !($mybb->usergroup['canmarksolved'] || is_moderator(
                         $forum['fid'],
                         '',
                         $post['uid'] ?? 0
@@ -1569,18 +1571,14 @@ function newreply_start(): bool
             }
         }
     }
-
-    return true;
 }
 
-function showthread_start(): bool
+function showthread_start(): void
 {
     newreply_start();
-
-    return true;
 }
 
-function newthread_do_newthread_end(): bool
+function newthread_do_newthread_end(): void
 {
     global $mybb;
 
@@ -1594,12 +1592,10 @@ function newthread_do_newthread_end(): bool
             $db->update_query('threads', $update, "tid = '" . intval($thread_info['tid']) . "'");
         }
     }
-
-    return true;
 }
 
 // check if a user is denied support when they're trying to make a new thread
-function newthread_start(): bool
+function newthread_start(): void
 {
     global $mybb;
 
@@ -1633,8 +1629,6 @@ function newthread_start(): bool
         }
         error($deniedsupport_message, $lang->mysupport_error);
     }
-
-    return true;
 }
 
 // highlight the best answer from the thread and show the status of the thread in each post
@@ -1656,7 +1650,9 @@ function postbit(array &$post): array
                     $post['mysupport_bestanswer_highlight'] = ' mysupport_bestanswer_highlight';
                 }
 
-                if ($mybb->user['uid'] == $thread['uid'] && $mybb->usergroup['canmarkbestanswer'] || is_moderator(
+                $currentUserID = (int)$mybb->user['uid'];
+
+                if ($currentUserID == $thread['uid'] && $mybb->usergroup['canmarkbestanswer'] || is_moderator(
                         $forum['fid'],
                         'canmarkbestanswer'
                     )) {
@@ -1681,7 +1677,7 @@ function postbit(array &$post): array
             // we only want to do this if it's not been highlighted as the best answer; that takes priority over this
             if (empty($post['mysupport_bestanswer_highlight'])) {
                 if ($mybb->settings['mysupport_highlightstaffposts']) {
-                    $usergroup = get_usergroup_permissions(false, $post);
+                    $usergroup = get_usergroup_permissions(0, $post);
 
                     // various checks to see if they should be considered staff or not
                     if ($usergroup['canmarksolved'] || is_moderator($forum['fid'], '', $post['uid'])) {
@@ -1734,10 +1730,10 @@ function postbit(array &$post): array
 
         if ($thread['issupportthread'] == 1 && $thread['firstpost'] == $post['pid']) {
             $post['mysupport_status'] = _get_display_status(
-                $thread['status'],
-                $thread['onhold'],
-                $thread['statustime'],
-                $thread['uid']
+                (int)$thread['status'],
+                (int)$thread['onhold'],
+                (int)$thread['statustime'],
+                (int)$thread['uid']
             );
         }
     }
@@ -1746,14 +1742,15 @@ function postbit(array &$post): array
 }
 
 // show the form in the thread to change the status of the thread
-function showthread_start20(): bool
+function showthread_start20(): void
 {
     global $mybb;
 
     global $db, $cache, $lang, $templates, $theme, $thread, $forum, $mysupport_status, $mysupport_options, $mysupport_js, $support_denial_reasons, $mod_log_action, $redirect;
 
     if (empty($forum['mysupport'])) {
-        error($lang->bestanswer_invalid_forum, $lang->mysupport_error);
+        return;
+        ///error($lang->bestanswer_invalid_forum, $lang->mysupport_error);
     }
 
     $lang->load('mysupport');
@@ -1761,7 +1758,9 @@ function showthread_start20(): bool
     $tid = intval($thread['tid']);
     $fid = intval($thread['fid']);
 
-    if (!empty($forum['mysupport']) && $mybb->get_input('action') != 'mysupport' && $mybb->get_input(
+    $currentUserID = (int)$mybb->user['uid'];
+
+    if ($mybb->get_input('action') != 'mysupport' && $mybb->get_input(
             'action'
         ) != 'bestanswer') {
         // load the denied reasons so we can display them to staff if necessary
@@ -1777,15 +1776,16 @@ function showthread_start20(): bool
 
         $onclick = '';
 
+        $count = 0;
+
         if ($thread['issupportthread'] == 1) {
             $mysupport_options = '';
-            $count = 0;
             $mysupport_solved = $mysupport_solved_and_close = $mysupport_technical = $mysupport_not_solved = $on_hold = $assigned_list = $priorities_list = $categories_list = $is_support_thread = '';
             // if it's not already solved
             if ($thread['status'] != 1) {
                 // can they mark as solved?
-                if ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid'])) {
-                    // closing when solved is either optional, or off
+                if ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID)) {
+                    // closing when solved is either optional or off
                     if ($mybb->settings['mysupport_closewhensolved'] != 'always') {
                         $onclick = '';
 
@@ -1805,7 +1805,7 @@ function showthread_start20(): bool
 
                     // is the ability to close turned on?
                     if ($mybb->settings['mysupport_closewhensolved'] != 'never' && !$thread['closed']) {
-                        // if the close setting isn't never, this option would show regardless of whether it's set to always or optional
+                        // if the close setting isn't, this option would show regardless of whether it's set to always or optional
                         if ($mybb->get_input('mysupport_full')) {
                             $selected = '';
                             $value = 3;
@@ -1855,7 +1855,7 @@ function showthread_start20(): bool
                 }
             } // if it's solved, all you can do is mark it as not solved
             // are they allowed to mark it as not solved if it's been marked solved already?
-            elseif ($mybb->settings['mysupport_unsolve'] && ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid']))) {
+            elseif ($mybb->settings['mysupport_unsolve'] && ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID))) {
                 if ($mybb->get_input('mysupport_full')) {
                     $selected = '';
                     $value = 0;
@@ -1873,7 +1873,7 @@ function showthread_start20(): bool
             $status_list = '';
             // if the current count is more than 0 there's some status options to show
             if ($count > 0) {
-                $current_status = _get_friendly_status($thread['status']);
+                $current_status = _get_friendly_status((int)$thread['status']);
                 $status_list .= "<label for=\"status\">" . $lang->markas . "</label> <select name=\"status\">\n";
                 // show the current status but have the value as -1 so it's treated as not submitting a status
                 // doing this because the assigning and priority menus show their current values, so do it here too for consistency
@@ -1907,7 +1907,7 @@ function showthread_start20(): bool
                 }
             }
 
-            if ($thread['status'] != 1 && ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid']))) {
+            if ($thread['status'] != 1 && ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID))) {
                 if ($mybb->settings['mysupport_enableonhold']) {
                     if ($mybb->get_input('mysupport_full')) {
                         $checked = '';
@@ -1934,7 +1934,7 @@ function showthread_start20(): bool
             }
 
             // do we need to show the link to show the additional options?
-            // for assigning users, and setting priorities and categories, check the permission; if we're requesting the information, show it, if not, set this to true
+            // for assigning users and setting priorities and categories, check the permission; if we're requesting the information, show it, if not, set this to true
             $show_more_link = false;
             // check if assigning threads is enabled and make sure you can assign threads to people
             // also check if the thread is currently not solved, or if it's solved but you can unsolve it; if any of those are true, you may want to assign it
@@ -2024,7 +2024,7 @@ function showthread_start20(): bool
                 $show_more_link = true;
             }
 
-            if ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid'])) {
+            if ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID)) {
                 if ($mybb->get_input('mysupport_full')) {
                     $categories = get_categories($forum);
                     if (!empty($categories)) {
@@ -2053,7 +2053,7 @@ function showthread_start20(): bool
                 $show_more_link = true;
             }
 
-            if ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid']) && $mybb->settings['mysupport_enablenotsupportthread']) {
+            if ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID) && $mybb->settings['mysupport_enablenotsupportthread']) {
                 if ($mybb->get_input('mysupport_full')) {
                     $checked = '';
                     if ($thread['issupportthread'] == 1) {
@@ -2105,10 +2105,10 @@ function showthread_start20(): bool
 
         if ($thread['issupportthread'] == 1) {
             $mysupport_status = _get_display_status(
-                $thread['status'],
-                $thread['onhold'],
-                $thread['statustime'],
-                $thread['uid']
+                (int)$thread['status'],
+                (int)$thread['onhold'],
+                (int)$thread['statustime'],
+                (int)$thread['uid']
             );
         }
     }
@@ -2130,13 +2130,15 @@ function showthread_start20(): bool
         $old_onhold = intval($thread['onhold']);
         $old_issupportthread = intval($thread['issupportthread']);
 
+        $valid_action = false;
+
         // we need to make sure they haven't edited the form to try to perform an action they're not allowed to do
         // we check everything in the entire form, if any part of it is wrong, it won't do anything
         if (empty($forum['mysupport'])) {
             error($lang->error_not_mysupport_forum, $lang->mysupport_error);
         }
         // are they trying to assign the same status it already has?
-        if ($status == $old_status && !isset($mybb->input['onhold']) && !isset($mybb->input['issupportthread'])) {
+        if ($status == $old_status && empty($mybb->input['onhold']) && empty($mybb->input['issupportthread'])) {
             $duplicate_status = _get_friendly_status($status);
             error($lang->sprintf($lang->error_same_status, $duplicate_status), $lang->mysupport_error);
         } elseif ($status == 0) {
@@ -2146,7 +2148,7 @@ function showthread_start20(): bool
                 !$forum['allowsolvestatus'] ||
                 (
                     !is_moderator($fid, 'canmarksolved') ||
-                    !($mybb->usergroup['canmarksolved'] && $thread['uid'] == $mybb->user['uid'])
+                    !($mybb->usergroup['canmarksolved'] && $thread['uid'] == $currentUserID)
                 )
             ) {
                 error($lang->no_permission_mark_notsolved, $lang->mysupport_error);
@@ -2156,7 +2158,7 @@ function showthread_start20(): bool
         } elseif ($status == 1) {
             // either they're not in a group that can mark as solved
             // or they're not allowed to mark it as solved even though they authored it
-            if (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid'])) {
+            if (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID)) {
                 error($lang->no_permission_mark_solved, $lang->mysupport_error);
             }
 
@@ -2175,7 +2177,7 @@ function showthread_start20(): bool
         } elseif ($status == 3) {
             // either closing of threads is turned off altogether
             // or it's on, but they're not in a group that can't mark as solved
-            if ($thread['closed'] == 1 || $mybb->settings['mysupport_closewhensolved'] == 'never' || ($mybb->settings['mysupport_closewhensolved'] != 'never' && (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid'])))) {
+            if ($thread['closed'] == 1 || $mybb->settings['mysupport_closewhensolved'] == 'never' || ($mybb->settings['mysupport_closewhensolved'] != 'never' && (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID)))) {
                 error($lang->no_permission_mark_solved_close, $lang->mysupport_error);
             }
 
@@ -2207,7 +2209,7 @@ function showthread_start20(): bool
                 error($lang->onhold_solved, $lang->mysupport_error);
             }
 
-            if (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid'])) {
+            if (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID)) {
                 error($lang->no_permission_thread_hold, $lang->mysupport_error);
             }
 
@@ -2222,12 +2224,12 @@ function showthread_start20(): bool
         if (($mybb->get_input(
                 'via_form',
                 MyBB::INPUT_INT
-            ) && isset($mybb->input['issupportthread']) && (($issupportthread == 1 && $old_issupportthread == 0) || (!$issupportthread && $old_issupportthread == 1)))) {
+            ) && !empty($mybb->input['issupportthread']) && (($issupportthread == 1 && $old_issupportthread == 0) || (!$issupportthread && $old_issupportthread == 1)))) {
             if (!$mybb->settings['mysupport_enablenotsupportthread']) {
                 error($lang->issupportthread_not_enabled, $lang->mysupport_error);
             }
 
-            if (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid'])) {
+            if (!$mybb->usergroup['canmarksolved'] && !($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID)) {
                 error($lang->no_permission_issupportthread, $lang->mysupport_error);
             }
         }
@@ -2294,18 +2296,18 @@ function showthread_start20(): bool
         }
         // it didn't hit an error with any of the above, it's a valid action
         if ($valid_action !== false) {
-            // if you're choosing the same status or choosing none
+            // If you're choosing the same status or choosing none
             // and assigning the same user or assigning none (as in the empty option, not choosing 'Nobody' to remove an assignment)
             // and setting the same priority or setting none (as in the empty option, not choosing 'None' to remove a priority)
-            // and setting the same hold status, and setting the same issupportthread status
-            // then you're not actually doing anything, because you're either choosing the same stuff, or choosing nothing at all
-            if (($status == $old_status || $status == '-1') && ($assign == $old_assign || $assign == 0) && ($priority == $old_priority || $priority == 0) && ($category == $old_category || $category == 0) && ($onhold == $old_onhold) && (isset($mybb->input['issupportthread']) && $issupportthread == $old_issupportthread)) {
+            // and setting the same hold status, and setting the same issupportthread status,
+            // then you're not doing anything. You're either choosing the same stuff or choosing nothing at all
+            if (($status == $old_status || $status == '-1') && ($assign == $old_assign || $assign == 0) && ($priority == $old_priority || $priority == 0) && ($category == $old_category || $category == 0) && ($onhold == $old_onhold) && (!empty($mybb->input['issupportthread']) && $issupportthread == $old_issupportthread)) {
                 error($lang->error_no_action, $lang->mysupport_error);
             }
 
             $mod_log_action = $redirect = '';
 
-            if (isset($mybb->input['issupportthread']) && $issupportthread != $old_issupportthread) {
+            if (!empty($mybb->input['issupportthread']) && $issupportthread != $old_issupportthread) {
                 change_issupportthread($thread, $issupportthread);
             } else {
                 // change the status and move/close
@@ -2323,13 +2325,13 @@ function showthread_start20(): bool
                     change_assign($thread, $assign);
                 }
 
-                // we need to see if the same priority has been submitted so it doesn't run this for no reason
-                // we also need to check if it's being marked as solved, if it is we don't need to do anything with priorities, it'll just be ignored
+                // we need to see if the same priority has been submitted, so it doesn't run this without reason
+                // we also need to check if it's being marked as solved, if it is, we don't need to do anything with priorities, it'll just be ignored
                 if ($priority != $old_priority && ($priority != 0 && $status != 1)) {
                     change_priority($thread, $priority);
                 }
 
-                // we need to see if the same category has been submitted so it doesn't run this for no reason
+                // we need to see if the same category has been submitted, so it doesn't run this without a reason
                 if ($category != $old_category && ($category != 0 && $status != 1)) {
                     change_category($thread, $category);
                 }
@@ -2337,13 +2339,13 @@ function showthread_start20(): bool
 
             if (!empty($mod_log_action)) {
                 $mod_log_data = [
-                    'fid' => intval($fid),
-                    'tid' => intval($tid)
+                    'fid' => $fid,
+                    'tid' => $tid
                 ];
                 log_moderator_action($mod_log_data, $mod_log_action);
             }
 
-            // where should they go to afterwards?
+            // where should they go to afterward?
             $thread_url = get_thread_link($tid);
 
             redirect($thread_url, $redirect);
@@ -2365,7 +2367,7 @@ function showthread_start20(): bool
         }
 
         // did this user author this thread?
-        if ($mybb->user['uid'] != $thread['uid']) {
+        if ($currentUserID != $thread['uid']) {
             error($lang->bestanswer_not_author, $lang->mysupport_error);
         } // is this post already the best answer?
         elseif ($post['pid'] == $thread['bestanswer']) {
@@ -2410,7 +2412,7 @@ function showthread_start20(): bool
 
             // if this thread isn't solved yet, do that too whilst we're here
             // if they're marking a post as the best answer, it must have solved the thread, so save them marking it as solved manually
-            if ($thread['status'] != 1 && ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $mybb->user['uid']))) {
+            if ($thread['status'] != 1 && ($mybb->usergroup['canmarksolved'] || ($mybb->settings['mysupport_author'] && $thread['uid'] == $currentUserID))) {
                 $mod_log_action = '';
 
                 // change the status
@@ -2432,21 +2434,21 @@ function showthread_start20(): bool
             redirect($post_url, $lang->bestanswer_redirect);
         }
     }
-
-    return true;
 }
 
-function usercp_start20(): bool
+function usercp_start20(): void
 {
     global $mybb, $db, $lang, $templates, $mysupport_usercp_options;
 
     if ($mybb->settings['mysupport_displaytypeuserchange']) {
+        $currentUserID = (int)$mybb->user['uid'];
+
         if ($mybb->get_input('action') == 'do_options') {
             $update = [
                 'mysupportdisplayastext' => $mybb->get_input('mysupportdisplayastext', MyBB::INPUT_INT)
             ];
 
-            $db->update_query('users', $update, "uid = '" . intval($mybb->user['uid']) . "'");
+            $db->update_query('users', $update, "uid = '" . $currentUserID . "'");
         } elseif ($mybb->get_input('action') == 'options') {
             $lang->load('mysupport');
 
@@ -2458,22 +2460,20 @@ function usercp_start20(): bool
             $mysupport_usercp_options = eval($templates->render('mysupport_usercp_options'));
         }
     }
-
-    return true;
 }
 
-function xmlhttp(): bool
+function xmlhttp(): void
 {
     global $mybb, $db, $lang;
 
     if ($mybb->get_input('action') != 'mysupport_assign_users') {
-        return false;
+        return;
     }
 
-    $mybb->input['query'] = ltrim($mybb->get_input('query'));
+    $search_query = ltrim($mybb->get_input('query'));
 
     // If the string is less than 2 characters, quit.
-    if (my_strlen($mybb->input['query']) < 2) {
+    if (my_strlen($search_query) < 2) {
         exit;
     }
 
@@ -2490,7 +2490,7 @@ function xmlhttp(): bool
 
     $uids = implode("','", array_keys($users));
 
-    $likestring = $db->escape_string_like($mybb->input['query']);
+    $likestring = $db->escape_string_like($search_query);
 
     $query = $db->simple_select(
         'users',

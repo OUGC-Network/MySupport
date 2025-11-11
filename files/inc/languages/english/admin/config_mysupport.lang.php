@@ -283,3 +283,7 @@ $l['mysupport_moderators_canmarkonhold'] = $l['mysupport_usergroups_canmarkonhol
 $l['mysupport_moderators_canmarkasnonsupport'] = $l['mysupport_usergroups_canmarkasnonsupport'];
 
 $l['my_support_inline_find'] = 'Find';
+
+$l = array_merge([
+    'mysupport_pluginlibrary' => 'This plugin requires <a href="{1}">PluginLibrary</a> version {2} or later to be uploaded to your forum.'
+], $l);

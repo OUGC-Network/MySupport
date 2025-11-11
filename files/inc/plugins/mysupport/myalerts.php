@@ -55,7 +55,7 @@ function isLocationAlertTypePresent(string $locationName): bool
     return false;
 }
 
-function installLocation(string $name): bool
+function installLocation(string $name): void
 {
     global $db, $cache;
 
@@ -76,32 +76,28 @@ function installLocation(string $name): bool
 
         $alertTypeManager->add($alertType);
     }
-
-    return true;
 }
 
-function uninstallLocation(string $name): bool
+function uninstallLocation(string $name): void
 {
     global $db, $cache;
 
     // remove MyAlerts type
     $alertTypeManager = MybbStuff_MyAlerts_AlertTypeManager::getInstance();
 
-    $alertTypeManager->deleteByCode('dvz_mentions_' . $name);
+    $alertTypeManager->deleteByCode('mysupport_' . $name);
 
     // remove datacache value
-    $cacheEntry = $cache->read('dvz_mentions');
+    $cacheEntry = $cache->read('mysupport');
     $key = array_search($name, $cacheEntry['MyAlertLocationsInstalled']);
 
     if ($key !== false) {
         unset($cacheEntry['MyAlertLocationsInstalled'][$key]);
-        $cache->update('dvz_mentions', $cacheEntry);
+        $cache->update('mysupport', $cacheEntry);
     }
-
-    return true;
 }
 
-function initMyalerts(): bool
+function initMyalerts(): void
 {
     defined('MYBBSTUFF_CORE_PATH') or define('MYBBSTUFF_CORE_PATH', MYBB_ROOT . 'inc/plugins/MybbStuff/Core/');
 
@@ -114,20 +110,16 @@ function initMyalerts(): bool
     $classLoader->registerNamespace('MybbStuff_MyAlerts', [MYALERTS_PLUGIN_PATH . '/src']);
 
     $classLoader->register();
-
-    return true;
 }
 
-function initLocations(): bool
+function initLocations(): void
 {
     foreach (getInstalledLocations() as $locationName) {
         require_once ROOT . '/myalerts/' . $locationName . '/init.php';
     }
-
-    return true;
 }
 
-function registerMyalertsFormatters(): bool
+function registerMyalertsFormatters(): void
 {
     global $mybb, $lang, $formatterManager;
 
@@ -142,8 +134,6 @@ function registerMyalertsFormatters(): bool
 
         $formatterManager->registerFormatter($formatter);
     }
-
-    return true;
 }
 
 function MyAlertsIsIntegrable(): bool

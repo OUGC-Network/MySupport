@@ -18,6 +18,7 @@
 declare(strict_types=1);
 
 use function MySupport\Core\_get_friendly_status;
+use function MySupport\Core\loadLanguage;
 use function MySupport\Core\updateCache;
 
 use const MySupport\Core\CACHE_TYPE_DENIED_REASONS;
@@ -38,57 +39,81 @@ $run_module = $run_module_backup;
 
 $action_file = $action_file_backup;
 
-// rebuild the caches
-$cache->update_forums();
-$cache->update_usergroups();
+loadLanguage();
 
 $page->add_breadcrumb_item($lang->mysupport, 'index.php?module=config-mysupport');
 
-if ($mybb->input['action'] == 'do_priorities') {
-    if (!verify_post_check($mybb->input['my_post_key'])) {
+if ($mybb->get_input('action') == 'do_priorities') {
+    if (!verify_post_check($mybb->get_input('my_post_key'))) {
         flash_message($lang->invalid_post_verify_key2, 'error');
         admin_redirect('index.php?module=config-mysupport&action=priorities');
     }
 
-    if ($mybb->input['do'] == 'do_add') {
-        if (!strlen(trim($mybb->input['name']))) {
+    if ($mybb->get_input('do') == 'do_add') {
+        if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->priority_no_name, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         }
         $insert = [
-            'name' => $db->escape_string($mybb->input['name']),
-            'description' => $db->escape_string($mybb->input['description']),
-            'extra' => $db->escape_string(str_replace('#', '', $mybb->input['style'])),
-            'type' => DATABASE_ROW_TYPE_PRIORITY
+            'name' => $db->escape_string($mybb->get_input('name')),
+            'description' => $db->escape_string($mybb->get_input('description')),
+            'extra' => $db->escape_string(str_replace('#', '', $mybb->get_input('style'))),
+            'type' => DATABASE_ROW_TYPE_PRIORITY,
+            'allowed_groups' => $db->escape_string(
+                implode(
+                    ',',
+                    $mybb->get_input('allowed_groups', MyBB::INPUT_ARRAY)
+                )
+            ),
+            'allowed_forums' => $db->escape_string(
+                implode(
+                    ',',
+                    $mybb->get_input('allowed_forums', MyBB::INPUT_ARRAY)
+                )
+            ),
         ];
-        $db->insert_query('mysupport', $insert);
+
+        \MySupport\Core\priority_insert($insert);
 
         updateCache(CACHE_TYPE_PRIORITIES);
 
         flash_message($lang->priority_added, 'success');
         admin_redirect('index.php?module=config-mysupport&action=priorities');
-    } elseif ($mybb->input['do'] == 'do_edit') {
-        $pid = intval($mybb->input['pid']);
-        if (!strlen(trim($mybb->input['name']))) {
+    } elseif ($mybb->get_input('do') == 'do_edit') {
+        $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
+        if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->priority_no_name, 'error');
             admin_redirect("index.php?module=config-mysupport&action=priorities&do=edit&pid={$pid}");
         }
         $update = [
-            'name' => $db->escape_string($mybb->input['name']),
-            'description' => $db->escape_string($mybb->input['description']),
-            'extra' => $db->escape_string(str_replace('#', '', $mybb->input['style']))
+            'name' => $db->escape_string($mybb->get_input('name')),
+            'description' => $db->escape_string($mybb->get_input('description')),
+            'extra' => $db->escape_string(str_replace('#', '', $mybb->get_input('style'))),
+            'allowed_groups' => $db->escape_string(
+                implode(
+                    ',',
+                    $mybb->get_input('allowed_groups', MyBB::INPUT_ARRAY)
+                )
+            ),
+            'allowed_forums' => $db->escape_string(
+                implode(
+                    ',',
+                    $mybb->get_input('allowed_forums', MyBB::INPUT_ARRAY)
+                )
+            ),
         ];
-        $db->update_query('mysupport', $update, "mid = '{$pid}'");
+
+        \MySupport\Core\priorityUpdate($update, $pid);
 
         updateCache(CACHE_TYPE_PRIORITIES);
 
         flash_message($lang->priority_edited, 'success');
         admin_redirect('index.php?module=config-mysupport&action=priorities');
-    } elseif ($mybb->input['do'] == 'do_delete') {
-        if ($mybb->input['no']) {
+    } elseif ($mybb->get_input('do') == 'do_delete') {
+        if (isset($mybb->input['no'])) {
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         } else {
-            $pid = intval($mybb->input['pid']);
+            $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
             $update = [
                 'priority' => 0
             ];
@@ -102,57 +127,59 @@ if ($mybb->input['action'] == 'do_priorities') {
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         }
     }
-} elseif ($mybb->input['action'] == 'do_support_denial') {
-    if (!verify_post_check($mybb->input['my_post_key'])) {
+} elseif ($mybb->get_input('action') == 'do_support_denial') {
+    if (!verify_post_check($mybb->get_input('my_post_key'))) {
         flash_message($lang->invalid_post_verify_key2, 'error');
         admin_redirect('index.php?module=config-mysupport&action=support_denial');
     }
 
-    if ($mybb->input['do'] == 'do_add') {
-        if (!strlen(trim($mybb->input['name']))) {
+    if ($mybb->get_input('do') == 'do_add') {
+        if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->support_denial_reason_no_name, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         }
-        if (!strlen(trim($mybb->input['description']))) {
+        if (!strlen(trim($mybb->get_input('description')))) {
             flash_message($lang->support_denial_reason_no_description, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         }
         $insert = [
-            'name' => $db->escape_string($mybb->input['name']),
-            'description' => $db->escape_string($mybb->input['description']),
+            'name' => $db->escape_string($mybb->get_input('name')),
+            'description' => $db->escape_string($mybb->get_input('description')),
             'type' => 'deniedreason'
         ];
-        $db->insert_query('mysupport', $insert);
+
+        \MySupport\Core\priority_insert($insert);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
 
         flash_message($lang->support_denial_reason_added, 'success');
         admin_redirect('index.php?module=config-mysupport&action=support_denial');
-    } elseif ($mybb->input['do'] == 'do_edit') {
-        $drid = intval($mybb->input['drid']);
-        if (!strlen(trim($mybb->input['name']))) {
+    } elseif ($mybb->get_input('do') == 'do_edit') {
+        $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
+        if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->support_denial_reason_no_name, 'error');
             admin_redirect("index.php?module=config-mysupport&action=support_denial&do=edit&drid={$drid}");
         }
-        if (!strlen(trim($mybb->input['description']))) {
+        if (!strlen(trim($mybb->get_input('description')))) {
             flash_message($lang->support_denial_reason_no_description, 'error');
             admin_redirect("index.php?module=config-mysupport&action=support_denial&do=edit&drid={$drid}");
         }
         $update = [
-            'name' => $db->escape_string($mybb->input['name']),
-            'description' => $db->escape_string($mybb->input['description'])
+            'name' => $db->escape_string($mybb->get_input('name')),
+            'description' => $db->escape_string($mybb->get_input('description'))
         ];
-        $db->update_query('mysupport', $update, "mid = '{$drid}'");
+
+        \MySupport\Core\priorityUpdate($update, $drid);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
 
         flash_message($lang->support_denial_reason_edited, 'success');
         admin_redirect('index.php?module=config-mysupport&action=support_denial');
-    } elseif ($mybb->input['do'] == 'do_delete') {
-        if ($mybb->input['no']) {
+    } elseif ($mybb->get_input('do') == 'do_delete') {
+        if (isset($mybb->input['no'])) {
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         } else {
-            $drid = intval($mybb->input['drid']);
+            $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
             $update = [
                 'deniedsupportreason' => 0
             ];
@@ -165,21 +192,27 @@ if ($mybb->input['action'] == 'do_priorities') {
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         }
     }
-} elseif ($mybb->input['action'] == 'support_denial') {
+} elseif ($mybb->get_input('action') == 'support_denial') {
     $page->add_breadcrumb_item($lang->support_denial, 'index.php?module=config-mysupport&amp;action=support_denial');
 
-    if ($mybb->input['do'] == 'edit') {
+    if ($mybb->get_input('do') == 'edit') {
         $page->output_header($lang->mysupport);
 
         generate_mysupport_tabs('support_denial');
 
         $table = new Table();
 
-        $drid = intval($mybb->input['drid']);
-        $query = $db->simple_select('mysupport', '*', "mid = '{$drid}' AND type = 'deniedreason'");
+        $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
+        $query = $db->simple_select(
+            'mysupport',
+            'mid, type, name, description, extra, allowed_groups, allowed_forums',
+            "mid = '{$drid}' AND type = 'deniedreason'"
+        );
         if ($db->num_rows($query) != 1) {
             flash_message($lang->support_denial_reason_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
+
+            exit;
         } else {
             $deniedreason = $db->fetch_array($query);
         }
@@ -203,16 +236,20 @@ if ($mybb->input['action'] == 'do_priorities') {
         );
 
         echo $form->generate_hidden_field('do', 'do_edit');
-        echo $form->generate_hidden_field('drid', intval($mybb->input['drid']));
+        echo $form->generate_hidden_field('drid', $mybb->get_input('drid', MyBB::INPUT_INT));
 
         $form_container->end();
 
         $buttons[] = $form->generate_submit_button($lang->mysupport_edit_support_denial_reason_submit);
         $form->output_submit_wrapper($buttons);
         $form->end();
-    } elseif ($mybb->input['do'] == 'delete') {
-        $drid = intval($mybb->input['drid']);
-        $query = $db->simple_select('mysupport', '*', "mid = '{$drid}' AND type = 'deniedreason'");
+    } elseif ($mybb->get_input('do') == 'delete') {
+        $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
+        $query = $db->simple_select(
+            'mysupport',
+            'mid, type, name, description, extra, allowed_groups, allowed_forums',
+            "mid = '{$drid}' AND type = 'deniedreason'"
+        );
         if ($db->num_rows($query) != 1) {
             flash_message($lang->support_denial_reason_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
@@ -240,7 +277,11 @@ if ($mybb->input['action'] == 'do_priorities') {
 
         $table = new Table();
 
-        $query = $db->simple_select('mysupport', '*', "type = 'deniedreason'");
+        $query = $db->simple_select(
+            'mysupport',
+            'mid, type, name, description, extra, allowed_groups, allowed_forums',
+            "type = 'deniedreason'"
+        );
 
         if ($db->num_rows($query) != 0) {
             $table->construct_header($lang->mysupport_name);
@@ -290,19 +331,25 @@ if ($mybb->input['action'] == 'do_priorities') {
 } else {
     $page->add_breadcrumb_item($lang->priorities, 'index.php?module=config-mysupport&amp;action=priorities');
 
-    if ($mybb->input['do'] == 'edit') {
+    if ($mybb->get_input('do') == 'edit') {
         $page->output_header($lang->mysupport);
 
         generate_mysupport_tabs('priorities');
 
         $table = new Table();
 
-        $pid = intval($mybb->input['pid']);
+        $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
         $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-        $query = $db->simple_select('mysupport', '*', "type = '{$priorityType}' AND mid = '{$pid}'");
+        $query = $db->simple_select(
+            'mysupport',
+            'mid, type, name, description, extra, allowed_groups, allowed_forums',
+            "type = '{$priorityType}' AND mid = '{$pid}'"
+        );
         if ($db->num_rows($query) == 0) {
             flash_message($lang->priority_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
+
+            exit;
         } else {
             $priority = $db->fetch_array($query);
         }
@@ -323,31 +370,35 @@ if ($mybb->input['action'] == 'do_priorities') {
         $form_container->output_row($lang->priority_style, $lang->priority_style_description, $edit_priority_style);
 
         $edit_priority_groups = $form->generate_group_select(
-            'groups',
-            explode(',', $priority['groups']),
+            'allowed_groups[]',
+            explode(',', $priority['allowed_groups'] ?? ''),
             ['multiple' => true]
         );
         $form_container->output_row($lang->priority_groups, $lang->priority_groups_description, $edit_priority_groups);
 
         $edit_priority_forums = $form->generate_forum_select(
-            'forums',
-            explode(',', $priority['forums']),
+            'allowed_forums[]',
+            explode(',', $priority['allowed_forums'] ?? ''),
             ['multiple' => true]
         );
         $form_container->output_row($lang->priority_forums, $lang->priority_forums_description, $edit_priority_forums);
 
         echo $form->generate_hidden_field('do', 'do_edit');
-        echo $form->generate_hidden_field('pid', intval($mybb->input['pid']));
+        echo $form->generate_hidden_field('pid', $mybb->get_input('pid', MyBB::INPUT_INT));
 
         $form_container->end();
 
         $buttons[] = $form->generate_submit_button($lang->mysupport_edit_priority_submit);
         $form->output_submit_wrapper($buttons);
         $form->end();
-    } elseif ($mybb->input['do'] == 'delete') {
-        $pid = intval($mybb->input['pid']);
+    } elseif ($mybb->get_input('do') == 'delete') {
+        $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
         $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-        $query = $db->simple_select('mysupport', '*', "type = '{$priorityType}' AND mid = '{$pid}'");
+        $query = $db->simple_select(
+            'mysupport',
+            'mid, type, name, description, extra, allowed_groups, allowed_forums',
+            "type = '{$priorityType}' AND mid = '{$pid}'"
+        );
         if ($db->num_rows($query) == 0) {
             flash_message($lang->priority_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
@@ -366,14 +417,14 @@ if ($mybb->input['action'] == 'do_priorities') {
             "index.php?module=config-mysupport&amp;action=do_priorities&amp;do=do_delete&amp;pid={$pid}",
             $lang->priority_delete_confirm . $priority_delete_confirm_count
         );
-    } elseif ($mybb->input['do'] == 'viewthreads') {
+    } elseif ($mybb->get_input('do') == 'viewthreads') {
         $page->output_header($lang->mysupport);
 
         generate_mysupport_tabs('priorities');
 
         $table = new Table();
 
-        $pid = intval($mybb->input['pid']);
+        $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
         $query = $db->write_query(
             '
 			SELECT t.tid, t.subject, t.fid, f.name, t.uid, t.username, t.status
@@ -411,7 +462,7 @@ if ($mybb->input['action'] == 'do_priorities') {
                 );
                 $table->construct_cell($profile_link, ['class' => 'align_center', 'width' => '20%']);
                 $table->construct_cell(
-                    _get_friendly_status($thread['status']),
+                    _get_friendly_status((int)$thread['status']),
                     ['class' => 'align_center', 'width' => '20%']
                 );
                 $table->construct_row();
@@ -433,7 +484,12 @@ if ($mybb->input['action'] == 'do_priorities') {
         $table = new Table();
 
         $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-        $query = $db->simple_select('mysupport', '*', "type = '{$priorityType}'");
+        $query = $db->simple_select(
+            'mysupport',
+            'mid, type, name, description, extra, allowed_groups, allowed_forums',
+            "type = '{$priorityType}'"
+        );
+
         if ($db->num_rows($query) > 0) {
             $table->construct_header($lang->mysupport_name);
             $table->construct_header($lang->mysupport_description);
@@ -492,18 +548,20 @@ if ($mybb->input['action'] == 'do_priorities') {
 /**
  * Output the MySupport tabs; save repeating code for each section
  *
- * @param string The tab to show as the current tab.
+ * @param string $selected The tab to show as the current tab.
  **/
-function generate_mysupport_tabs($selected)
+function generate_mysupport_tabs(string $selected): void
 {
     global $lang, $page;
 
     $sub_tabs = [];
+
     $sub_tabs['priorities'] = [
         'title' => $lang->priorities,
         'link' => 'index.php?module=config-mysupport&amp;action=priorities',
         'description' => $lang->priorities_nav
     ];
+
     $sub_tabs['support_denial'] = [
         'title' => $lang->support_denial,
         'link' => 'index.php?module=config-mysupport&amp;action=support_denial',

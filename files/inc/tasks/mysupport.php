@@ -25,28 +25,30 @@ function task_mysupport(array $task): array
 
     $task_log = $lang->task_mysupport_ran;
 
-    // if this is empty or 0 it'll effect all threads
+    // if this is empty or 0, it'll affect all threads
     if ($mybb->settings['mysupport_taskautosolvetime'] > 0) {
         $cut = TIME_NOW - intval($mybb->settings['mysupport_taskautosolvetime']);
-        $mysupport_forums = implode(',', array_map('intval', mysupport_forums()));
+        $mysupport_forums = implode(',', array_map('intval', \MySupport\Core\enabledForums()));
+
+        $threads_solved = false;
+
+        $tids = [];
 
         // are there any MySupport forums?
         if (!empty($mysupport_forums)) {
-            // select all the unsolved threads in MySupport forums where the last post was before the cut-off time, and either the status time is before the cut-off time, or the status of the thread has never been changed
+            // select all the unsolved threads in MySupport forums where the last post was before the cut-off time. Either the status time is before the cut-off time, or the status of the thread has never been changed
             // this means it's not been posted in, and no MySupport actions have taken place on it, within the cut-off time
             $query = $db->simple_select(
                 'threads',
                 'tid',
-                "status != '1' AND fid IN (" . $db->escape_string($mysupport_forums) . ") AND lastpost < '" . intval(
-                    $cut
-                ) . "' AND (statustime < '" . intval($cut) . "' OR statustime = '0')"
+                "status != '1' AND fid IN (" . $db->escape_string(
+                    $mysupport_forums
+                ) . ") AND lastpost < '" . $cut . "' AND (statustime < '" . $cut . "' OR statustime = '0')"
             );
-            $tids = [];
             while ($thread = $db->fetch_array($query)) {
                 $tids[] = $thread['tid'];
             }
 
-            $threads_solved = false;
             // if there are any threads to mark as solved
             if (!empty($tids)) {
                 mysupport_change_status($tids, 1, true);
@@ -61,8 +63,12 @@ function task_mysupport(array $task): array
 
     if ($mybb->settings['mysupport_taskbackup'] > 0) {
         $timecut = TIME_NOW - $mybb->settings['mysupport_taskbackup'];
-        $query = $db->simple_select('mysupport', '*', "type = 'backup' AND extra > '" . intval($timecut) . "'");
-        // no backups have been made within the cut off time
+        $query = $db->simple_select(
+            'mysupport',
+            'mid, type, name, description, extra, allowed_groups, allowed_forums',
+            "type = 'backup' AND extra > '" . intval($timecut) . "'"
+        );
+        // no backups have been made within the cut-off time
         if ($db->num_rows($query) == 0) {
             if (!defined('MYBB_ADMIN_DIR')) {
                 if (!isset($config['admin_dir'])) {
@@ -73,12 +79,14 @@ function task_mysupport(array $task): array
             }
 
             if (is_writable(MYBB_ADMIN_DIR . 'backups')) {
-                $name = substr(md5($mybb->user['uid'] . TIME_NOW), 0, 10) . random_str(54);
+                $currentUserID = (int)$mybb->user['uid'];
+
+                $name = substr(md5($currentUserID . TIME_NOW), 0, 10) . random_str(54);
                 $file = MYBB_ADMIN_DIR . 'backups/mysupport_backup_' . $name . '.sql';
 
-                $f = @fopen($file, 'w');
-                @fwrite($f, "<?php\n");
-                @fwrite(
+                $f = fopen($file, 'w');
+                fwrite($f, "<?php\n");
+                fwrite(
                     $f,
                     "/**\n * Backup of MySupport data\n * Generated: " . date(
                         "dS F Y \a\\t H:i",
@@ -91,6 +99,8 @@ function task_mysupport(array $task): array
                 $mysupport_columns = mysupport_table_columns(2);
 
                 foreach ($mysupport_columns as $table => $columns) {
+                    $id_field = null;
+
                     switch ($table) {
                         case 'forums':
                             $id_field = 'fid';
@@ -106,6 +116,10 @@ function task_mysupport(array $task): array
                             break;
                     }
 
+                    if (empty($id_field)) {
+                        continue;
+                    }
+
                     $columns = implode(', ', array_map($db->escape_string, array_keys($columns)));
                     $query = $db->simple_select($table, $id_field . ',' . $columns);
                     $columns = explode(', ', $columns);
@@ -118,7 +132,7 @@ function task_mysupport(array $task): array
                             $set .= '`' . $column . "` = '" . $r[$column] . "'";
                         }
                         $q = "\$queries[] = \"UPDATE " . TABLE_PREFIX . $table . ' SET ' . $set . ' WHERE `' . $id_field . "` = '" . $r[$id_field] . "'\";\n";
-                        @fwrite($f, $q);
+                        fwrite($f, $q);
                     }
                 }
                 $query = $db->simple_select('mysupport');
@@ -136,18 +150,19 @@ function task_mysupport(array $task): array
                             ',',
                             $vals
                         ) . ")\";\n";
-                    @fwrite($f, $q);
+                    fwrite($f, $q);
                 }
 
-                @fwrite($f, '?>');
-                @fclose($f);
+                fwrite($f, '?>');
+                fclose($f);
 
                 $insert = [
                     'type' => 'backup',
                     'name' => $db->escape_string($name),
                     'extra' => TIME_NOW
                 ];
-                $db->insert_query('mysupport', $insert);
+
+                \MySupport\Core\priority_insert($insert);
 
                 // get the latest 3 backups
                 $query = $db->simple_select(
@@ -170,7 +185,7 @@ function task_mysupport(array $task): array
                 );
                 while ($backup = $db->fetch_array($query)) {
                     if (file_exists(MYBB_ADMIN_DIR . 'backups/mysupport_backup_' . $backup['name'] . '.sql')) {
-                        @unlink(MYBB_ADMIN_DIR . 'backups/mysupport_backup_' . $backup['name'] . '.sql');
+                        unlink(MYBB_ADMIN_DIR . 'backups/mysupport_backup_' . $backup['name'] . '.sql');
                     }
                     $db->delete_query('mysupport', "mid = '" . intval($backup['mid']) . "'");
                 }

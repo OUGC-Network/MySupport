@@ -35,6 +35,266 @@ const TASK_FILE_DEACTIVATE = 0;
 
 const TASK_FILE_INSTALL = 1;
 
+const TABLES_DATA = [
+    'mysupport' => [
+        'mid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'type' => [
+            'type' => 'VARCHAR',
+            'size' => 20,
+            'default' => ''
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'description' => [
+            'type' => 'VARCHAR',
+            'size' => 500,
+            'default' => ''
+        ],
+        'extra' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'allowed_groups' => [
+            'type' => 'TEXT',
+            'null' => true,
+        ],
+        'allowed_forums' => [
+            'type' => 'TEXT',
+            'null' => true,
+        ],
+        //'unique_key' => ['uid' => 'uid']
+    ]
+];
+
+const FIELDS_DATA = [
+    'forums' => [
+        'mysupport' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'mysupportmove' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'mysupportdenial' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'technicalthreads' => [ // counter stat ?
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'allowsolvestatus' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'allowtechnicalstatus' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'allowbestanswerstatus' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'allowonholdstatus' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'allowhighlight' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'allownonsupportthreads' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+    ],
+    //mysupportmove should probably be left for moderation tools
+    'threads' => [
+        'status' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'statusuid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'statustime' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'onhold' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'bestanswer' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'assign' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'assignuid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'priority' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'closedbymysupport' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'issupportthread' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+    ],
+    'users' => [
+        'assignedthreads' => [
+            'type' => 'TEXT',
+            'null' => true,
+        ],
+        'deniedsupport' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'deniedsupportreason' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'deniedsupportuid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'mysupportdisplayastext' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+    ],
+    'usergroups' => [
+        'canmarksolved' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canseetechnotice' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canbeassigned' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canseepriorities' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'canmarkbestanswer' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canmarkonhold' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canmarkasnonsupport' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'canmanagesupportdenial' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+    ],
+    // we will use the is_moderator() function to allow moderators run some tools so we leave only tools at least the author will be able to use
+    'moderators' => [
+        'canmarksolved' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canmarktechnical' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canassign' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'cansetpriorities' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canmanagesupportdenial' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        // this will be forum-specific (mods) or all forums (super mods)
+        'canmarkbestanswer' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canmarkonhold' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+        'canmarkasnonsupport' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+    ],
+];
+
 function pluginInformation(): array
 {
     global $lang;
@@ -68,7 +328,7 @@ function pluginInformation(): array
     ];
 }
 
-function pluginActivation(): bool
+function pluginActivation(): void
 {
     global $PL, $lang, $cache, $db;
 
@@ -328,7 +588,11 @@ function pluginActivation(): bool
 
     /*~*~* RUN UPDATES START *~*~*/
 
-    $db->update_query('mysupport', ['type' => DATABASE_ROW_TYPE_PRIORITY], "type='priority'");
+    $query = $db->simple_select('mysupport', 'mid', "type='priority'");
+
+    while ($priorityData = $db->fetch_array($query)) {
+        \MySupport\Core\priorityUpdate(['type' => DATABASE_ROW_TYPE_PRIORITY], (int)$priorityData['mid']);
+    }
 
     /*~*~* RUN UPDATES END *~*~*/
 
@@ -337,11 +601,9 @@ function pluginActivation(): bool
     $cache->update_usergroups();
 
     updateCache();
-
-    return true;
 }
 
-function pluginDeactivation(): bool
+function pluginDeactivation(): void
 {
     require_once MYBB_ROOT . 'inc/adminfunctions_templates.php';
 
@@ -549,11 +811,9 @@ function pluginDeactivation(): bool
 
     // Update administrator permissions
     change_admin_permission('config', 'mysupport', 0);
-
-    return true;
 }
 
-function loadPluginLibrary(): bool
+function loadPluginLibrary(): void
 {
     global $PL, $lang;
 
@@ -579,13 +839,13 @@ function loadPluginLibrary(): bool
 
         admin_redirect('index.php?module=config-plugins');
     }
-
-    return true;
 }
 
-function pluginInstallation(): bool
+function pluginInstallation(): void
 {
     global $cache, $db, $lang;
+
+    loadPluginLibrary();
 
     loadLanguage();
 
@@ -610,7 +870,7 @@ function pluginInstallation(): bool
     }
 
     foreach ($priorityItems as $priorityItem) {
-        $db->insert_query('mysupport', [
+        \MySupport\Core\priority_insert([
             'type' => DATABASE_ROW_TYPE_PRIORITY,
             'name' => $db->escape_string($priorityItem['name']),
             'description' => $db->escape_string($priorityItem['description']),
@@ -621,7 +881,7 @@ function pluginInstallation(): bool
     // set some values for the staff groups
     $updateData = [];
 
-    foreach (dbDataColumns()['usergroups'] as $fieldName => $fieldDefinition) {
+    foreach (FIELDS_DATA['usergroups'] as $fieldName => $fieldDefinition) {
         $updateData[$fieldName] = 1;
     }
 
@@ -636,38 +896,50 @@ function pluginInstallation(): bool
     $cache->update('mysupport', [
         'MyAlertLocationsInstalled' => $MyAlertLocationsInstalled,
     ]);
-
-    return true;
 }
 
 function pluginIsInstalled(): bool
 {
-    global $db;
-
     static $isInstalled = null;
 
     if ($isInstalled === null) {
-        $isInstalled = true;
+        global $db;
 
-        foreach (dbDataTables() as $tableName => $tableFields) {
-            $isInstalled = $db->table_exists($tableName) && $isInstalled;
+        $isInstalledEach = true;
+
+        foreach (TABLES_DATA as $tableName => $tableColumns) {
+            $isInstalledEach = $db->table_exists($tableName) && $isInstalledEach;
+
+            if (!$isInstalledEach) {
+                break;
+            }
+
+            foreach ($tableColumns as $fieldName => $fieldDefinition) {
+                $isInstalledEach = $db->field_exists($fieldName, $tableName) && $isInstalledEach;
+
+                if (!$isInstalledEach) {
+                    break;
+                }
+            }
         }
+
+        $isInstalled = $isInstalledEach;
     }
 
     return $isInstalled;
 }
 
-function pluginUninstallation(): bool
+function pluginUninstallation(): void
 {
     global $db, $PL, $cache;
 
     loadPluginLibrary();
 
-    foreach (dbDataTables() as $tableName => $tableFields) {
+    foreach (TABLES_DATA as $tableName => $tableFields) {
         $db->drop_table($tableName);
     }
 
-    foreach (dbDataColumns() as $tableName => $tableFields) {
+    foreach (FIELDS_DATA as $tableName => $tableFields) {
         foreach ($tableFields as $fieldName => $definition) {
             !$db->field_exists($fieldName, $tableName) || $db->drop_column($tableName, $fieldName);
         }
@@ -692,148 +964,68 @@ function pluginUninstallation(): bool
 
     // Delete version from cache
     $cache->delete('mysupport');
-
-    return true;
 }
 
-// List of tables
-function dbDataTables(): array
+function dbTables(): array
 {
-    return [
-        'mysupport' => [
-            'mid' => 'SMALLINT(5) NOT NULL AUTO_INCREMENT',
-            'type' => "VARCHAR(20) NOT NULL DEFAULT ''",
-            'name' => "VARCHAR(255) NOT NULL DEFAULT ''",
-            'description' => "VARCHAR(500) NOT NULL DEFAULT ''",
-            'extra' => "VARCHAR(255) NOT NULL default ''",
-            'groups' => "VARCHAR(255) NOT NULL default ''",
-            'forums' => "VARCHAR(255) NOT NULL default ''",
-            'primary_key' => 'mid',
-            'unique_key' => []
-        ],
-        //'unique_key' => ['uid' => 'uid']
-    ];
-}
+    $tables_data = [];
 
-// List of columns
-function dbDataColumns(): array
-{
-    return [
-        'forums' => [
-            'mysupport' => "INT(1) NOT NULL DEFAULT '0'",
-            'mysupportmove' => "INT(1) NOT NULL DEFAULT '1'",
-            'mysupportdenial' => "INT(1) NOT NULL DEFAULT '1'",
-            'technicalthreads' => "INT(5) NOT NULL DEFAULT '0'", // counter stat ?
-            'allowsolvestatus' => "INT(1) NOT NULL DEFAULT '1'",
-            'allowtechnicalstatus' => "INT(1) NOT NULL DEFAULT '1'",
-            'allowbestanswerstatus' => "INT(1) NOT NULL DEFAULT '1'",
-            'allowonholdstatus' => "INT(1) NOT NULL DEFAULT '1'",
-            'allowhighlight' => "INT(1) NOT NULL DEFAULT '1'",
-            'allownonsupportthreads' => "INT(1) NOT NULL DEFAULT '0'",
-        ],
-        //mysupportmove should probably be left for moderation tools
-        'threads' => [
-            'status' => "INT(1) NOT NULL DEFAULT '0'",
-            'statusuid' => "INT(10) NOT NULL DEFAULT '0'",
-            'statustime' => "INT(10) NOT NULL DEFAULT '0'",
-            'onhold' => "INT(1) NOT NULL DEFAULT '0'",
-            'bestanswer' => "INT(10) NOT NULL DEFAULT '0'",
-            'assign' => "INT(10) NOT NULL DEFAULT '0'",
-            'assignuid' => "INT(10) NOT NULL DEFAULT '0'",
-            'priority' => "INT(5) NOT NULL DEFAULT '0'",
-            'closedbymysupport' => "INT(1) NOT NULL DEFAULT '0'",
-            'issupportthread' => "INT(1) NOT NULL DEFAULT '1'",
-        ],
-        'users' => [
-            'assignedthreads' => "VARCHAR(500) NOT NULL DEFAULT ''",
-            'deniedsupport' => "INT(1) NOT NULL DEFAULT '0'",
-            'deniedsupportreason' => "INT(5) NOT NULL DEFAULT '0'",
-            'deniedsupportuid' => "INT(10) NOT NULL DEFAULT '0'",
-            'mysupportdisplayastext' => "INT(1) NOT NULL DEFAULT '0'"
-        ],
-        'usergroups' => [
-            'canmarksolved' => "INT(1) NOT NULL DEFAULT '1'",
-            'canseetechnotice' => "INT(1) NOT NULL DEFAULT '1'",
-            'canbeassigned' => "INT(1) NOT NULL DEFAULT '1'",
-            'canseepriorities' => "INT(1) NOT NULL DEFAULT '0'",
-            'canmarkbestanswer' => "INT(1) NOT NULL DEFAULT '1'",
-            'canmarkonhold' => "INT(1) NOT NULL DEFAULT '1'",
-            'canmarkasnonsupport' => "INT(1) NOT NULL DEFAULT '0'",
-            'canmanagesupportdenial' => "INT(1) NOT NULL DEFAULT '0'",
-        ],
-        // we will use the is_moderator() function to allow moderators run some tools so we leave only tools at least the author will be able to use
-        'moderators' => [
-            'canmarksolved' => "INT(1) NOT NULL DEFAULT '1'",
-            'canmarktechnical' => "INT(1) NOT NULL DEFAULT '1'",
-            'canassign' => "INT(1) NOT NULL DEFAULT '1'",
-            'cansetpriorities' => "INT(1) NOT NULL DEFAULT '1'",
-            'canmanagesupportdenial' => "INT(1) NOT NULL DEFAULT '1'",
-            // this will be forum specific (mods) or all forums (super mods)
-            'canmarkbestanswer' => "INT(1) NOT NULL DEFAULT '1'",
-            'canmarkonhold' => "INT(1) NOT NULL DEFAULT '1'",
-            'canmarkasnonsupport' => "INT(1) NOT NULL DEFAULT '1'",
-        ]
-    ];
-}
+    foreach (TABLES_DATA as $tableName => $tableColumns) {
+        foreach ($tableColumns as $fieldName => $fieldData) {
+            if (!isset($fieldData['type'])) {
+                continue;
+            }
 
-// Verify DB indexes
-function dbVerifyIndexes(): bool
-{
-    global $db;
-
-    foreach (dbDataTables() as $tableName => $tableFields) {
-        if (!$db->table_exists($tableName)) {
-            continue;
+            $tables_data[$tableName][$fieldName] = dbBuildFieldDefinition($fieldData);
         }
 
-        if (isset($tableFields['unique_key'])) {
-            foreach ($tableFields['unique_key'] as $uniqueKeyName => $uniqueKeyFields) {
-                if ($db->index_exists($tableName, $uniqueKeyName)) {
-                    continue;
-                }
+        foreach ($tableColumns as $fieldName => $fieldData) {
+            if (isset($fieldData['primary_key'])) {
+                $tables_data[$tableName]['primary_key'] = $fieldName;
+            }
 
-                $db->write_query(
-                    "ALTER TABLE {$db->table_prefix}{$tableName} ADD UNIQUE KEY {$uniqueKeyName} ({$uniqueKeyFields})"
-                );
+            if ($fieldName === 'unique_key') {
+                $tables_data[$tableName]['unique_key'] = $fieldData;
             }
         }
     }
 
-    return true;
+    return $tables_data;
 }
 
-// Verify DB tables
 function dbVerifyTables(): bool
 {
     global $db;
 
-    foreach (dbDataTables() as $tableName => $tableFields) {
+    $collation = $db->build_create_table_collation();
+
+    foreach (dbTables() as $tableName => $tableColumns) {
         if ($db->table_exists($tableName)) {
-            foreach ($tableFields as $fieldName => $fieldDefinition) {
+            foreach ($tableColumns as $fieldName => $fieldData) {
                 if ($fieldName == 'primary_key' || $fieldName == 'unique_key') {
                     continue;
                 }
 
                 if ($db->field_exists($fieldName, $tableName)) {
-                    $db->modify_column($tableName, "`{$fieldName}`", $fieldDefinition);
+                    $db->modify_column($tableName, "`{$fieldName}`", $fieldData);
                 } else {
-                    $db->add_column($tableName, $fieldName, $fieldDefinition);
+                    $db->add_column($tableName, $fieldName, $fieldData);
                 }
             }
         } else {
-            $dbQuery = "CREATE TABLE IF NOT EXISTS `{$db->table_prefix}{$tableName}` (";
+            $query_string = "CREATE TABLE IF NOT EXISTS `{$db->table_prefix}{$tableName}` (";
 
-            foreach ($tableFields as $fieldName => $fieldDefinition) {
+            foreach ($tableColumns as $fieldName => $fieldData) {
                 if ($fieldName == 'primary_key') {
-                    $dbQuery .= "PRIMARY KEY (`{$fieldDefinition}`)";
+                    $query_string .= "PRIMARY KEY (`{$fieldData}`)";
                 } elseif ($fieldName != 'unique_key') {
-                    $dbQuery .= "`{$fieldName}` {$fieldDefinition},";
+                    $query_string .= "`{$fieldName}` {$fieldData},";
                 }
             }
 
-            $dbQuery .= ") ENGINE=MyISAM{$db->build_create_table_collation()};";
+            $query_string .= ") ENGINE=MyISAM{$collation};";
 
-            $db->write_query($dbQuery);
+            $db->write_query($query_string);
         }
     }
 
@@ -842,16 +1034,24 @@ function dbVerifyTables(): bool
     return true;
 }
 
-function dbVerifyColumns(): bool
+function dbVerifyIndexes(): bool
 {
     global $db;
 
-    foreach (dbDataColumns() as $tableName => $tableFields) {
-        foreach ($tableFields as $fieldName => $fieldDefinition) {
-            if ($db->field_exists($fieldName, $tableName)) {
-                $db->modify_column($tableName, "`{$fieldName}`", $fieldDefinition);
-            } else {
-                $db->add_column($tableName, $fieldName, $fieldDefinition);
+    foreach (dbTables() as $tableName => $tableColumns) {
+        if (!$db->table_exists($tableName)) {
+            continue;
+        }
+
+        if (isset($tableColumns['unique_key'])) {
+            foreach ($tableColumns['unique_key'] as $key_name => $key_value) {
+                if ($db->index_exists($tableName, $key_name)) {
+                    continue;
+                }
+
+                $db->write_query(
+                    "ALTER TABLE {$db->table_prefix}{$tableName} ADD UNIQUE KEY {$key_name} ({$key_value})"
+                );
             }
         }
     }
@@ -859,13 +1059,73 @@ function dbVerifyColumns(): bool
     return true;
 }
 
-function taskInstallation(int $processAction = TASK_FILE_INSTALL): bool
+function dbVerifyColumns(): bool
+{
+    global $db;
+
+    foreach (FIELDS_DATA as $tableName => $tableColumns) {
+        if (!$db->table_exists($tableName)) {
+            continue;
+        }
+
+        foreach ($tableColumns as $fieldName => $fieldData) {
+            if (!isset($fieldData['type'])) {
+                continue;
+            }
+
+            if ($db->field_exists($fieldName, $tableName)) {
+                $db->modify_column($tableName, "`{$fieldName}`", dbBuildFieldDefinition($fieldData));
+            } else {
+                $db->add_column($tableName, $fieldName, dbBuildFieldDefinition($fieldData));
+            }
+        }
+    }
+
+    return true;
+}
+
+function dbBuildFieldDefinition(array $fieldData): string
+{
+    $field_definition = '';
+
+    $field_definition .= $fieldData['type'];
+
+    if (isset($fieldData['size'])) {
+        $field_definition .= "({$fieldData['size']})";
+    }
+
+    if (isset($fieldData['unsigned'])) {
+        if ($fieldData['unsigned'] === true) {
+            $field_definition .= ' UNSIGNED';
+        } else {
+            $field_definition .= ' SIGNED';
+        }
+    }
+
+    if (!isset($fieldData['null'])) {
+        $field_definition .= ' NOT';
+    }
+
+    $field_definition .= ' NULL';
+
+    if (isset($fieldData['auto_increment'])) {
+        $field_definition .= ' AUTO_INCREMENT';
+    }
+
+    if (isset($fieldData['default'])) {
+        $field_definition .= " DEFAULT '{$fieldData['default']}'";
+    }
+
+    return $field_definition;
+}
+
+function taskInstallation(int $processAction = TASK_FILE_INSTALL): void
 {
     global $db, $lang;
 
     loadLanguage();
 
-    $dbQuery = $db->simple_select('tasks', '*', "file='mysupport'", ['limit' => 1]);
+    $dbQuery = $db->simple_select('tasks', 'tid', "file='mysupport'", ['limit' => 1]);
 
     $taskData = $db->fetch_array($dbQuery);
 
@@ -893,24 +1153,18 @@ function taskInstallation(int $processAction = TASK_FILE_INSTALL): bool
 
         $db->insert_query('tasks', $newTaskData);
     }
-
-    return true;
 }
 
-function taskUninstallation(): bool
+function taskUninstallation(): void
 {
     global $db;
 
     $db->delete_query('tasks', "file='mysupport'");
-
-    return true;
 }
 
-function taskDeactivation(): bool
+function taskDeactivation(): void
 {
     taskInstallation(TASK_FILE_DEACTIVATE);
-
-    return true;
 }
 
 function getSettingGroupID(): int

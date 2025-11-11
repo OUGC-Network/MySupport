@@ -71,19 +71,19 @@ function mysupport_info(): array
     return pluginInformation();
 }
 
-function mysupport_activate(): bool
+function mysupport_activate(): void
 {
-    return pluginActivation();
+    pluginActivation();
 }
 
-function mysupport_deactivate(): bool
+function mysupport_deactivate(): void
 {
-    return pluginDeactivation();
+    pluginDeactivation();
 }
 
-function mysupport_install(): bool
+function mysupport_install(): void
 {
-    return pluginInstallation();
+    pluginInstallation();
 }
 
 function mysupport_is_installed(): bool
@@ -91,9 +91,9 @@ function mysupport_is_installed(): bool
     return pluginIsInstalled();
 }
 
-function mysupport_uninstall(): bool
+function mysupport_uninstall(): void
 {
-    return pluginUninstallation();
+    pluginUninstallation();
 }
 
 function update_mysupport()

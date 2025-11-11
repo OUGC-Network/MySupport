@@ -44,11 +44,9 @@ class MybbStuff_MyAlerts_Formatter_MySupport_ThreadFormatter extends
         );
     }
 
-    public function init(): bool
+    public function init(): void
     {
         loadLanguage();
-
-        return true;
     }
 
     public function buildShowLink(MybbStuff_MyAlerts_Entity_Alert $alert): string

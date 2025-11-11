@@ -21,13 +21,13 @@ namespace MySupport\AdminHooks;
 
 use MyBB;
 
-use function MySupport\Admin\dbDataColumns;
-use function MySupport\Admin\getSettingGroupID;
 use function MySupport\Core\loadLanguage;
+use function MySupport\Admin\getSettingGroupID;
 use function MySupport\MyAlerts\getAvailableLocations;
 use function MySupport\MyAlerts\installLocation;
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 
+use const MySupport\Admin\FIELDS_DATA;
 use const MySupport\Core\ROOT;
 
 function admin_config_plugins_begin01()
@@ -64,7 +64,7 @@ function admin_config_plugins_begin01()
     admin_redirect('index.php?module=config-plugins');
 }
 
-function admin_config_plugins_deactivate(): bool
+function admin_config_plugins_deactivate(): void
 {
     global $mybb, $page;
 
@@ -73,7 +73,7 @@ function admin_config_plugins_deactivate(): bool
         $mybb->get_input('plugin') !== 'mysupport' ||
         !$mybb->get_input('uninstall', MyBB::INPUT_INT)
     ) {
-        return false;
+        return;
     }
 
     if ($mybb->request_method !== 'post') {
@@ -85,16 +85,14 @@ function admin_config_plugins_deactivate(): bool
     if ($mybb->get_input('no')) {
         admin_redirect('index.php?module=config-plugins');
     }
-
-    return true;
 }
 
-function admin_load(): bool
+function admin_load(): void
 {
     global $modules_dir, $run_module, $action_file, $page;
 
     if ($run_module !== 'config' || $page->active_action !== 'mysupport') {
-        return false;
+        return;
     }
 
     $modules_dir = ROOT;
@@ -102,8 +100,6 @@ function admin_load(): bool
     $run_module = 'admin';
 
     $action_file = 'mysupport.php';
-
-    return true;
 }
 
 function admin_config_action_handler(array $actionObjects): array
@@ -180,7 +176,7 @@ function admin_formcontainer_end(array &$formArguments): array
 
     $userOptions = $moderatorOptions = [];
 
-    foreach (dbDataColumns()['usergroups'] as $fieldName => $fieldDefinition) {
+    foreach (FIELDS_DATA['usergroups'] as $fieldName => $fieldDefinition) {
         $userPermissions = 'userOptions';
 
         if ($fieldName == 'canmanagesupportdenial') {
@@ -210,17 +206,15 @@ function admin_formcontainer_end(array &$formArguments): array
 }
 
 // Save group data
-function admin_user_groups_edit_commit(): bool
+function admin_user_groups_edit_commit(): void
 {
     global $updated_group, $mybb, $updated_group;
 
-    foreach (dbDataColumns()['usergroups'] as $fieldName => $fieldDefinition) {
+    foreach (FIELDS_DATA['usergroups'] as $fieldName => $fieldDefinition) {
         if (isset($mybb->input[$fieldName])) {
             $updated_group[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
         }
     }
-
-    return true;
 }
 
 function admin_formcontainer_output_row(array &$formArguments): array
@@ -237,7 +231,7 @@ function admin_formcontainer_output_row(array &$formArguments): array
         ) == 'forum-management' && !empty($lang->forum) && $formArguments['title'] === $lang->forum) {
         loadLanguage();
 
-        foreach (dbDataColumns()['moderators'] as $fieldName => $fieldDefinition) {
+        foreach (FIELDS_DATA['moderators'] as $fieldName => $fieldDefinition) {
             if ($fieldName === 'technicalthreads') {
                 continue;
             }
@@ -256,7 +250,7 @@ function admin_formcontainer_output_row(array &$formArguments): array
         ) == 'forum-management' && !empty($lang->misc_options) && $formArguments['title'] === $lang->misc_options) {
         loadLanguage();
 
-        foreach (dbDataColumns()['forums'] as $fieldName => $fieldDefinition) {
+        foreach (FIELDS_DATA['forums'] as $fieldName => $fieldDefinition) {
             if ($fieldName === 'technicalthreads') {
                 continue;
             }
@@ -285,13 +279,13 @@ function admin_formcontainer_output_row(array &$formArguments): array
 }
 
 // Save forum data
-function admin_forum_management_edit_commit(): bool
+function admin_forum_management_edit_commit(): void
 {
     global $mybb, $db, $fid;
 
     $updateData = [];
 
-    foreach (dbDataColumns()['forums'] as $fieldName => $fieldDefinition) {
+    foreach (FIELDS_DATA['forums'] as $fieldName => $fieldDefinition) {
         if (isset($mybb->input[$fieldName])) {
             $updateData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
         }
@@ -300,20 +294,16 @@ function admin_forum_management_edit_commit(): bool
     $db->update_query('forums', $updateData, "fid='{$fid}'");
 
     $mybb->cache->update_forums();
-
-    return true;
 }
 
 // Save forum data
-function admin_forum_management_editmod_commit(): bool
+function admin_forum_management_editmod_commit(): void
 {
     global $mybb, $update_array;
 
-    foreach (dbDataColumns()['moderators'] as $fieldName => $fieldDefinition) {
+    foreach (FIELDS_DATA['moderators'] as $fieldName => $fieldDefinition) {
         if (isset($mybb->input[$fieldName])) {
             $update_array[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
         }
     }
-
-    return true;
 }
