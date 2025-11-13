@@ -18,10 +18,18 @@
 declare(strict_types=1);
 
 use function MySupport\Core\_get_friendly_status;
+use function MySupport\Core\deniedReasonDelete;
+use function MySupport\Core\deniedReasonGet;
 use function MySupport\Core\loadLanguage;
-use function MySupport\Core\priority_insert;
+use function MySupport\Core\priorityDelete;
+use function MySupport\Core\priorityGet;
+use function MySupport\Core\priorityInsert;
 use function MySupport\Core\priorityUpdate;
+use function MySupport\Core\threadsGet;
+use function MySupport\Core\threadsUpdate;
 use function MySupport\Core\updateCache;
+use function MySupport\Core\usersGet;
+use function MySupport\Core\usersUpdate;
 
 use const MySupport\Core\CACHE_TYPE_DENIED_REASONS;
 use const MySupport\Core\CACHE_TYPE_PRIORITIES;
@@ -75,7 +83,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             ),
         ];
 
-        priority_insert($insert);
+        priorityInsert($insert);
 
         updateCache(CACHE_TYPE_PRIORITIES);
 
@@ -119,9 +127,12 @@ if ($mybb->get_input('action') == 'do_priorities') {
             $update = [
                 'priority' => 0
             ];
-            $db->update_query('threads', $update, "priority = '{$pid}'");
-            $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-            $db->delete_query('mysupport', "mid = '{$pid}' AND type = '{$priorityType}'");
+
+            foreach (threadsGet(["priority='{$pid}'"], ['tid']) as $threadID => $threadData) {
+                threadsUpdate($update, $threadID);
+            }
+
+            priorityDelete($pid);
 
             updateCache(CACHE_TYPE_PRIORITIES);
 
@@ -150,7 +161,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             'type' => 'deniedreason'
         ];
 
-        priority_insert($insert);
+        priorityInsert($insert);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
 
@@ -185,8 +196,12 @@ if ($mybb->get_input('action') == 'do_priorities') {
             $update = [
                 'deniedsupportreason' => 0
             ];
-            $db->update_query('users', $update, "deniedsupportreason = '{$drid}'");
-            $db->delete_query('mysupport', "mid = '{$drid}'");
+
+            foreach (usersGet(["deniedsupportreason='{$drid}'"], ['uid']) as $userID => $userData) {
+                usersUpdate($update, $userID);
+            }
+
+            deniedReasonDelete($drid);
 
             updateCache(CACHE_TYPE_DENIED_REASONS);
 
@@ -205,18 +220,13 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $table = new Table();
 
         $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
-        $query = $db->simple_select(
-            'mysupport',
-            'mid, type, name, description, extra, allowed_groups, allowed_forums',
-            "mid = '{$drid}' AND type = 'deniedreason'"
-        );
-        if ($db->num_rows($query) != 1) {
+        $deniedreason = deniedReasonGet(["mid='{$drid}'"], ['name', 'description'], ['limit' => 1]);
+
+        if (!$deniedreason) {
             flash_message($lang->support_denial_reason_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
 
             exit;
-        } else {
-            $deniedreason = $db->fetch_array($query);
         }
         $form = new Form('index.php?module=config-mysupport&amp;action=do_support_denial', 'post');
         $form_container = new FormContainer($lang->support_denial_reason_edit);
@@ -247,21 +257,17 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $form->end();
     } elseif ($mybb->get_input('do') == 'delete') {
         $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
-        $query = $db->simple_select(
-            'mysupport',
-            'mid, type, name, description, extra, allowed_groups, allowed_forums',
-            "mid = '{$drid}' AND type = 'deniedreason'"
-        );
-        if ($db->num_rows($query) != 1) {
+
+        if (!deniedReasonGet(["mid='{$drid}'"], queryOptions: ['limit' => 1])) {
             flash_message($lang->support_denial_reason_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         }
-        $query = $db->simple_select(
-            'users',
-            'COUNT(*) AS support_denial_reason_count',
-            "deniedsupportreason = '{$drid}'"
-        );
-        $support_denial_reason_count = $db->fetch_field($query, 'support_denial_reason_count');
+
+        $support_denial_reason_count = (int)(usersGet(
+            ["deniedsupportreason='{$drid}'"],
+            ['COUNT(uid) AS support_denial_reason_count']
+        )['support_denial_reason_count'] ?? 0);
+
         if ($support_denial_reason_count > 0) {
             $lang->support_denial_reason_delete_confirm .= ' ' . $lang->sprintf(
                     $lang->support_denial_reason_delete_confirm_count,
@@ -279,18 +285,14 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         $table = new Table();
 
-        $query = $db->simple_select(
-            'mysupport',
-            'mid, type, name, description, extra, allowed_groups, allowed_forums',
-            "type = 'deniedreason'"
-        );
+        $deniedReasonObjects = deniedReasonGet(queryFields: ['name', 'description'], queryOptions: ['limit' => 1]);
 
-        if ($db->num_rows($query) != 0) {
+        if ($deniedReasonObjects) {
             $table->construct_header($lang->mysupport_name);
             $table->construct_header($lang->mysupport_description);
             $table->construct_header($lang->controls, ['colspan' => 2, 'class' => 'align_center']);
 
-            while ($deniedreason = $db->fetch_array($query)) {
+            foreach ($deniedReasonObjects as $deniedreason) {
                 $table->construct_cell($deniedreason['name'], ['width' => '20%']);
                 $table->construct_cell($deniedreason['description'], ['width' => '50%']);
                 $table->construct_cell(
@@ -341,19 +343,13 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $table = new Table();
 
         $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
-        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-        $query = $db->simple_select(
-            'mysupport',
-            'mid, type, name, description, extra, allowed_groups, allowed_forums',
-            "type = '{$priorityType}' AND mid = '{$pid}'"
-        );
-        if ($db->num_rows($query) == 0) {
+        $priority = priorityGet(["mid='{$pid}'"], queryOptions: ['limit' => 1]);
+
+        if (!$priority) {
             flash_message($lang->priority_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
 
             exit;
-        } else {
-            $priority = $db->fetch_array($query);
         }
 
         $form = new Form('index.php?module=config-mysupport&amp;action=do_priorities', 'post');
@@ -395,18 +391,20 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $form->end();
     } elseif ($mybb->get_input('do') == 'delete') {
         $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
-        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-        $query = $db->simple_select(
-            'mysupport',
-            'mid, type, name, description, extra, allowed_groups, allowed_forums',
-            "type = '{$priorityType}' AND mid = '{$pid}'"
-        );
-        if ($db->num_rows($query) == 0) {
+
+        if (!priorityGet(["mid='{$pid}'"], queryOptions: ['limit' => 1])) {
             flash_message($lang->priority_invalid, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         }
-        $query = $db->simple_select('threads', 'COUNT(*) AS priority_count', "priority = '{$pid}'");
-        $priority_count = $db->fetch_field($query, 'priority_count');
+
+        $priority_count = (int)(threadsGet(
+            [
+                "priority='{$pid}'",
+            ],
+            ['COUNT(tid) AS priority_count'],
+            ['limit' => 1]
+        )['priority_count'] ?? 0);
+
         if ($priority_count > 0) {
             $priority_delete_confirm_count = ' ' . $lang->sprintf(
                     $lang->priority_delete_confirm_count,
@@ -427,25 +425,24 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $table = new Table();
 
         $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
-        $query = $db->write_query(
-            '
-			SELECT t.tid, t.subject, t.fid, f.name, t.uid, t.username, t.status
-			FROM ' . TABLE_PREFIX . 'threads t
-			LEFT JOIN ' . TABLE_PREFIX . "forums f
-			ON (t.fid = f.fid)
-			WHERE t.priority = '{$pid}'
-		"
-        );
-        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-        $query2 = $db->simple_select('mysupport', 'name', "mid = '{$pid}' AND type = '{$priorityType}'");
-        $priority_name = $db->fetch_field($query2, 'name');
-        if ($db->num_rows($query) > 0) {
+
+        $threadsObjects = threadsGet(["priority='{$pid}'"], ['tid', 'subject', 'fid', 'uid', 'username', 'status']);
+
+        $priority_name = priorityGet(
+            ["mid='{$pid}'"],
+            ['name'],
+            ['limit' => 1]
+        )['name'] ?? false;
+
+        if ($threadsObjects) {
             $table->construct_header($lang->thread);
             $table->construct_header($lang->forum);
             $table->construct_header($lang->started_by);
             $table->construct_header($lang->status);
 
-            while ($thread = $db->fetch_array($query)) {
+            foreach ($threadsObjects as $threadID => $thread) {
+                $thread['name'] = get_forum($thread['fid'])['name'] ?? '';
+
                 $thread_link = get_thread_link($thread['tid']);
                 $forum_link = get_forum_link($thread['fid']);
                 $profile_link = build_profile_link($thread['username'], $thread['uid'], '_blank');
@@ -485,19 +482,14 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         $table = new Table();
 
-        $priorityType = DATABASE_ROW_TYPE_PRIORITY;
-        $query = $db->simple_select(
-            'mysupport',
-            'mid, type, name, description, extra, allowed_groups, allowed_forums',
-            "type = '{$priorityType}'"
-        );
+        $priorityObjects = priorityGet(queryFields: ['name', 'description', 'extra']);
 
-        if ($db->num_rows($query) > 0) {
+        if ($priorityObjects) {
             $table->construct_header($lang->mysupport_name);
             $table->construct_header($lang->mysupport_description);
             $table->construct_header($lang->controls, ['colspan' => 3, 'class' => 'align_center']);
 
-            while ($priority = $db->fetch_array($query)) {
+            foreach ($priorityObjects as $priority) {
                 if (!empty($priority['extra'])) {
                     $style = "background: #{$priority['extra']}";
                 } else {

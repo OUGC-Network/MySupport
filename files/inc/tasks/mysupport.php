@@ -17,8 +17,14 @@
 
 declare(strict_types=1);
 
+use function MySupport\Core\_change_status;
+use function MySupport\Core\backupDelete;
 use function MySupport\Core\enabledForums;
-use function MySupport\Core\priority_insert;
+use function MySupport\Core\backupGet;
+use function MySupport\Core\priorityInsert;
+use function MySupport\Core\threadsGet;
+
+use const MySupport\Admin\FIELDS_DATA;
 
 function task_mysupport(array $task): array
 {
@@ -31,7 +37,7 @@ function task_mysupport(array $task): array
     // if this is empty or 0, it'll affect all threads
     if ($mybb->settings['mysupport_taskautosolvetime'] > 0) {
         $cut = TIME_NOW - intval($mybb->settings['mysupport_taskautosolvetime']);
-        $mysupport_forums = implode(',', array_map('intval', enabledForums()));
+        $mysupport_forums = implode("','", array_map('intval', enabledForums()));
 
         $threads_solved = false;
 
@@ -39,22 +45,26 @@ function task_mysupport(array $task): array
 
         // are there any MySupport forums?
         if (!empty($mysupport_forums)) {
-            // select all the unsolved threads in MySupport forums where the last post was before the cut-off time. Either the status time is before the cut-off time, or the status of the thread has never been changed
+            // Select all the unsolved threads in MySupport forums where the last post was before the cut-off time. Either the status time is before the cut-off time, or the status of the thread has never been changed
             // this means it's not been posted in, and no MySupport actions have taken place on it, within the cut-off time
-            $query = $db->simple_select(
-                'threads',
-                'tid',
-                "status != '1' AND fid IN (" . $db->escape_string(
-                    $mysupport_forums
-                ) . ") AND lastpost < '" . $cut . "' AND (statustime < '" . $cut . "' OR statustime = '0')"
+            $threadObjects = threadsGet(
+                [
+                    "status!='1'",
+                    "fid IN ('{$mysupport_forums}')",
+                    "lastpost<'$cut'",
+                    "(statustime<'" . $cut . "' OR statustime=0')"
+                ],
+                ['tid'],
             );
-            while ($thread = $db->fetch_array($query)) {
+
+            foreach ($threadObjects as $thread) {
                 $tids[] = $thread['tid'];
             }
 
             // if there are any threads to mark as solved
             if (!empty($tids)) {
-                mysupport_change_status($tids, 1, true);
+                _change_status($tids, 1, true);
+
                 $threads_solved = true;
             }
         }
@@ -66,13 +76,9 @@ function task_mysupport(array $task): array
 
     if ($mybb->settings['mysupport_taskbackup'] > 0) {
         $timecut = TIME_NOW - $mybb->settings['mysupport_taskbackup'];
-        $query = $db->simple_select(
-            'mysupport',
-            'mid, type, name, description, extra, allowed_groups, allowed_forums',
-            "type = 'backup' AND extra > '" . intval($timecut) . "'"
-        );
+
         // no backups have been made within the cut-off time
-        if ($db->num_rows($query) == 0) {
+        if (!backupGet(["extra>'{$timecut}'"])) {
             if (!defined('MYBB_ADMIN_DIR')) {
                 if (!isset($config['admin_dir'])) {
                     $config['admin_dir'] = 'admin';
@@ -97,14 +103,10 @@ function task_mysupport(array $task): array
                     ) . "\n * Only to be imported via the MySupport backup importer.\n**/\n\n"
                 );
 
-                require_once MYBB_ROOT . 'inc/plugins/mysupport/mysupport.php';
-
-                $mysupport_columns = mysupport_table_columns(2);
-
-                foreach ($mysupport_columns as $table => $columns) {
+                foreach (FIELDS_DATA as $tableName => $tableFields) {
                     $id_field = null;
 
-                    switch ($table) {
+                    switch ($tableName) {
                         case 'forums':
                             $id_field = 'fid';
                             break;
@@ -123,23 +125,23 @@ function task_mysupport(array $task): array
                         continue;
                     }
 
-                    $columns = implode(', ', array_map($db->escape_string, array_keys($columns)));
-                    $query = $db->simple_select($table, $id_field . ',' . $columns);
-                    $columns = explode(', ', $columns);
+                    $tableFields = implode(', ', array_map($db->escape_string, array_keys($tableFields)));
+                    $query = $db->simple_select($tableName, $id_field . ',' . $tableFields);
+                    $tableFields = explode(', ', $tableFields);
                     while ($r = $db->fetch_array($query)) {
                         $set = '';
-                        foreach ($columns as $column) {
+                        foreach ($tableFields as $fieldName => $definition) {
                             if (!empty($set)) {
                                 $set .= ', ';
                             }
-                            $set .= '`' . $column . "` = '" . $r[$column] . "'";
+                            $set .= '`' . $fieldName . "` = '" . $r[$fieldName] . "'";
                         }
-                        $q = "\$queries[] = \"UPDATE " . TABLE_PREFIX . $table . ' SET ' . $set . ' WHERE `' . $id_field . "` = '" . $r[$id_field] . "'\";\n";
+                        $q = "\$queries[] = \"UPDATE " . TABLE_PREFIX . $tableName . ' SET ' . $set . ' WHERE `' . $id_field . "` = '" . $r[$id_field] . "'\";\n";
                         fwrite($f, $q);
                     }
                 }
-                $query = $db->simple_select('mysupport');
-                while ($r = $db->fetch_array($query)) {
+
+                foreach (backupGet() as $r) {
                     $keys = [];
                     $vals = [];
                     foreach ($r as $key => $val) {
@@ -165,32 +167,29 @@ function task_mysupport(array $task): array
                     'extra' => TIME_NOW
                 ];
 
-                priority_insert($insert);
+                priorityInsert($insert);
 
                 // get the latest 3 backups
-                $query = $db->simple_select(
-                    'mysupport',
-                    'mid',
-                    "type = 'backup'",
-                    ['order_by' => 'extra', 'order_dir' => 'DESC', 'limit' => 3]
-                );
                 $backups = [0];
-                while ($backup = $db->fetch_field($query, 'mid')) {
-                    $backups[] = $backup;
+                foreach (
+                    backupGet(queryOptions: [
+                        'order_by' => 'extra',
+                        'order_dir' => 'DESC',
+                        'limit' => 3
+                    ]) as $backup
+                ) {
+                    $backups[] = $backup['mid'];
                 }
-                $backups = implode(',', array_map('intval', $backups));
+                $backups = implode("','", array_map('intval', $backups));
 
                 // select all the backups that aren't the last 3
-                $query = $db->simple_select(
-                    'mysupport',
-                    'mid, name',
-                    "type = 'backup' AND mid NOT IN (" . $db->escape_string($backups) . ')'
-                );
-                while ($backup = $db->fetch_array($query)) {
+
+                foreach (backupGet(["mid NOT IN ('{$db->escape_string($backups)}')"]) as $backupID => $backup) {
                     if (file_exists(MYBB_ADMIN_DIR . 'backups/mysupport_backup_' . $backup['name'] . '.sql')) {
                         unlink(MYBB_ADMIN_DIR . 'backups/mysupport_backup_' . $backup['name'] . '.sql');
                     }
-                    $db->delete_query('mysupport', "mid = '" . intval($backup['mid']) . "'");
+
+                    backupDelete($backupID);
                 }
 
                 $task_log .= ' ' . $lang->task_mysupport_backup_ran;

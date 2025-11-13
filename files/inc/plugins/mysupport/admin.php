@@ -21,7 +21,8 @@ namespace MySupport\Admin;
 
 use DirectoryIterator;
 
-use function MySupport\Core\priority_insert;
+use function MySupport\Core\priorityGet;
+use function MySupport\Core\priorityInsert;
 use function MySupport\Core\priorityUpdate;
 use function MySupport\Core\updateCache;
 use function MySupport\Core\loadLanguage;
@@ -317,9 +318,9 @@ function pluginInformation(): array
     return [
         'name' => 'MySupport',
         'description' => $lang->mysupport_desc . $myAlertsDescription,
-        'website' => 'http://mattrogowski.co.uk/mybb/plugins/plugin/mysupport',
+        'website' => 'https://matt.rogow.ski/',
         'author' => 'MattRogowski',
-        'authorsite' => 'http://mattrogowski.co.uk/mybb/',
+        'authorsite' => 'https://matt.rogow.ski/',
         'version' => VERSION,
         'versioncode' => VERSION_CODE,
         'compatibility' => '18*',
@@ -595,9 +596,7 @@ function pluginActivation(): void
 
     /*~*~* RUN UPDATES START *~*~*/
 
-    $query = $db->simple_select('mysupport', 'mid', "type='priority'");
-
-    while ($priorityData = $db->fetch_array($query)) {
+    foreach (priorityGet() as $priorityData) {
         priorityUpdate(['type' => DATABASE_ROW_TYPE_PRIORITY], (int)$priorityData['mid']);
     }
 
@@ -877,7 +876,7 @@ function pluginInstallation(): void
     }
 
     foreach ($priorityItems as $priorityItem) {
-        priority_insert([
+        priorityInsert([
             'type' => DATABASE_ROW_TYPE_PRIORITY,
             'name' => $db->escape_string($priorityItem['name']),
             'description' => $db->escape_string($priorityItem['description']),
@@ -886,11 +885,10 @@ function pluginInstallation(): void
     }
 
     // set some values for the staff groups
-    $updateData = [];
 
-    foreach (FIELDS_DATA['usergroups'] as $fieldName => $fieldDefinition) {
-        $updateData[$fieldName] = 1;
-    }
+    $updateData = array_map(function () {
+        return 1;
+    }, FIELDS_DATA['usergroups']);
 
     $db->update_query('usergroups', $updateData, 'gid IN (3,4,6)');
 
@@ -969,7 +967,7 @@ function pluginUninstallation(): void
 
     $cache->update_moderators();
 
-    // Delete version from cache
+    // Delete a version from the cache
     $cache->delete('mysupport');
 }
 

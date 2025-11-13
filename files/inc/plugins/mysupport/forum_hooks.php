@@ -24,6 +24,7 @@ use PostDataHandler;
 
 use function MySupport\Core\_change_hold;
 use function MySupport\Core\_change_status;
+use function MySupport\Core\deniedReasonGet;
 use function MySupport\Core\enabledForums;
 use function MySupport\Core\_get_count;
 use function MySupport\Core\_get_display_status;
@@ -39,8 +40,15 @@ use function MySupport\Core\mod_log_action;
 use function MySupport\Core\change_assign;
 use function MySupport\Core\change_category;
 use function MySupport\Core\change_priority;
+use function MySupport\Core\priorityGet;
 use function MySupport\Core\redirect_message;
+use function MySupport\Core\threadsGet;
+use function MySupport\Core\threadsUpdate;
 use function MySupport\Core\update_points;
+
+use function MySupport\Core\usersGet;
+
+use function MySupport\Core\usersUpdate;
 
 use const MySupport\Core\REVOKE_DENIED_SUPPORT;
 
@@ -108,7 +116,7 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
     // if we're editing a post, see if it's the last post in the thread and was written by the thread poster
     if ($posthandler->method == 'update') {
         $post = get_post($posthandler->data['pid']);
-        $thread_tid = $post['tid'];
+        $thread_tid = (int)$post['tid'];
         $thread_uid = $post['uid'];
 
         $query = $db->simple_select(
@@ -121,12 +129,12 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
         $posthandler->data['uid'] = $posthandler->data['edit_uid'];
     } else {
         $thread = get_thread($posthandler->data['tid']);
-        $thread_tid = $posthandler->data['tid'];
+        $thread_tid = (int)$posthandler->data['tid'];
         $thread_uid = $thread['uid'];
     }
 
-    // the user submitting this data is the author of the thread,
-    // and they're either making a new reply
+    // The user submitting this data is the author of the thread
+    // . They're either making a new reply
     // or they're editing the last post in the thread, which is theirs
     // take the thread off hold, as they've made an update
     if ($posthandler->data['uid'] == $thread_uid && ($posthandler->method == 'insert' || ($posthandler->method == 'update' && $posthandler->data['pid'] === $pid))) {
@@ -139,7 +147,7 @@ function datahandler_post_validate_post(PostDataHandler $data): PostDataHandler
         ];
     }
 
-    $db->update_query('threads', $update, "tid = '" . intval($thread_tid) . "'");
+    threadsUpdate($update, $thread_tid);
 
     return $data;
 }
@@ -232,7 +240,7 @@ function forumdisplay_thread(): void
     $mysupport_assigned = '';
     $mysupport_bestanswer = '';
 
-    if ($thread['issupportthread'] != 1 || strpos($thread['closed'], 'moved') !== false) {
+    if ($thread['issupportthread'] != 1 || str_contains($thread['closed'], 'moved')) {
         return;
     }
 
@@ -455,16 +463,16 @@ function member_profile_end(): void
 
     $something_to_show = false;
 
+    $profileUserID = (int)$memprofile['uid'];
+
     if ($mybb->settings['mysupport_enablebestanswer']) {
-        $query = $db->write_query(
-            '
-			SELECT COUNT(*) AS bestanswers
-			FROM ' . TABLE_PREFIX . 'threads t
-			LEFT JOIN ' . TABLE_PREFIX . 'posts p
-			ON (t.bestanswer = p.pid)
-			WHERE t.fid IN (' . $db->escape_string(implode(',', enabledForums())) . ")
-			AND p.uid = '" . intval($memprofile['uid']) . "'
-		"
+        $mysupport_forums = implode("','", enabledForums());
+
+        $query = $db->simple_select(
+            "threads t
+                LEFT JOIN {$db->table_prefix}posts p ON (t.bestanswer = p.pid)",
+            'COUNT(tid) AS bestanswers',
+            "t.fid IN ('{$mysupport_forums}}') AND p.uid = '{$profileUserID}'"
         );
 
         $bestanswers = $db->fetch_field($query, 'bestanswers');
@@ -589,19 +597,24 @@ function modcp_start(): void
                     'deniedsupportreason' => 0,
                     'deniedsupportuid' => 0
                 ];
-                $db->update_query('users', $update, "uid = '" . $uid . "'");
+
+                usersUpdate($update, $uid);
 
                 $update = [
                     'closed' => 0,
                     'closedbymysupport' => 0
                 ];
-                $db->update_query(
-                    'threads',
-                    $update,
-                    "uid = '" . intval($uid) . "' AND fid IN (" . $db->escape_string(
-                        implode(',', enabledForums())
-                    ) . ") AND closed = '1' AND closedbymysupport = '2'"
-                );
+
+                $enabledForums = implode("','", enabledForums());
+
+                foreach (
+                    threadsGet(
+                        ["uid='{$uid}'", "fid IN ('{$enabledForums}')", "closed='1'", "closedbymysupport='2'"],
+                        ['tid']
+                    ) as $threadID => $threadData
+                ) {
+                    threadsUpdate($update, $threadID);
+                }
 
                 mod_log_action(
                     11,
@@ -616,7 +629,8 @@ function modcp_start(): void
                     'deniedsupportreason' => $deniedsupportreason,
                     'deniedsupportuid' => $currentUserID
                 ];
-                $db->update_query('users', $update, "uid = '" . $uid . "'");
+
+                usersUpdate($update, $uid);
 
                 if ($mybb->settings['mysupport_closewhendenied']) {
                     $update = [
@@ -624,13 +638,16 @@ function modcp_start(): void
                         'closedbymysupport' => 2
                     ];
 
-                    $db->update_query(
-                        'threads',
-                        $update,
-                        "uid = '" . intval($uid) . "' AND fid IN (" . $db->escape_string(
-                            implode(',', enabledForums())
-                        ) . ") AND closed = '0'"
-                    );
+                    $enabledForums = implode("','", enabledForums());
+
+                    foreach (
+                        threadsGet(
+                            ["uid='{$uid}'", "fid IN ('{$enabledForums}')", "closed='0'"],
+                            ['tid']
+                        ) as $threadID => $threadData
+                    ) {
+                        threadsUpdate($update, $threadID);
+                    }
                 }
 
                 if (!empty($mysupport_cache['deniedReasons'][$deniedsupportreason])) {
@@ -690,7 +707,7 @@ function modcp_start(): void
 
             $mysupport_cache = $cache->read('mysupport');
             if (!empty($mysupport_cache['deniedReasons'])) {
-                // if there's one or more reasons set, show them in a dropdown
+                // if there are one or more reasons set, show them in a dropdown
                 foreach ($mysupport_cache['deniedReasons'] as $deniedreason) {
                     $value = (int)$deniedreason['mid'];
 
@@ -748,8 +765,10 @@ function modcp_start(): void
             }
             $limit = $limit > 100 ? 100 : ($limit < 1 ? 1 : $limit);
 
-            $query = $db->simple_select('users', 'COUNT(uid) AS users', 'deniedsupport=1');
-            $userscount = $db->fetch_field($query, 'users');
+            $userscount = (int)(usersGet(
+                ["deniedsupport='1'"],
+                ['COUNT(uid) AS users']
+            )['users'] ?? 0);
 
             if ($mybb->get_input('page', 1) > 0) {
                 $start = ($mybb->get_input('page', 1) - 1) * $limit;
@@ -763,17 +782,14 @@ function modcp_start(): void
                 $mybb->input['page'] = 1;
             }
 
-            $query = $db->write_query(
-                '
-				SELECT u1.username AS support_denied_username, u1.uid AS support_denied_uid, u2.username AS support_denier_username, u2.uid AS support_denier_uid, m.name AS support_denied_reason
-				FROM ' . TABLE_PREFIX . 'users u
-				LEFT JOIN ' . TABLE_PREFIX . 'mysupport m ON (u.deniedsupportreason = m.mid)
-				LEFT JOIN ' . TABLE_PREFIX . 'users u1 ON (u1.uid = u.uid)
-				LEFT JOIN ' . TABLE_PREFIX . "users u2 ON (u2.uid = u.deniedsupportuid)
-				WHERE u.deniedsupport = '1'
-				ORDER BY u1.username ASC
-				LIMIT {$start}, {$limit}
-			"
+            $query = $db->simple_select(
+                "users u
+                LEFT JOIN {$db->table_prefix}mysupport m ON (u.deniedsupportreason = m.mid)
+				LEFT JOIN  {$db->table_prefix}users u1 ON (u1.uid = u.uid)
+				LEFT JOIN  {$db->table_prefix}users u2 ON (u2.uid = u.deniedsupportuid)",
+                'u1.username AS support_denied_username, u1.uid AS support_denied_uid, u2.username AS support_denier_username, u2.uid AS support_denier_uid, m.name AS support_denied_reason',
+                "u.deniedsupport = '1'",
+                ['order_by' => 'u1.username', 'order_dir' => 'asc', 'limit_start' => $start, 'limit' => $limit]
             );
 
             $multipage = (string)multipage($userscount, $limit, $mybb->get_input('page', 1), $url);
@@ -843,13 +859,13 @@ function modcp_start09(): void
         }
 
         if ($something_to_show) {
-            // do a str_replace on the nav to display it; need to do a string replace as the hook we're using here is after $modcp_nav has been eval'd
+            // do a str_replace on the nav to display it; need to do a string replacement as the hook we're using here is after $modcp_nav has been eval'd
             $modcp_nav = str_replace('<!--mysupport_nav_option-->', $mysupport_nav_option, $modcp_nav);
         } else {
             // if the technical threads or support denial feature isn't enabled, replace the code in the template with nothing
             $modcp_nav = str_replace('<!--mysupport_nav_option-->', '', $modcp_nav);
         }
-    } // need to check for private.php too so it shows in the PM system - the usercp_menu_built hook is run after $mysupport_nav_option has been made so this will work for both
+    } // need to check for private.php too, so it shows in the PM system - the usercp_menu_built hook is run after $mysupport_nav_option has been made so this will work for both
     elseif (THIS_SCRIPT == 'usercp.php' || THIS_SCRIPT == 'usercp2.php' || THIS_SCRIPT == 'private.php') {
         $mysupport_nav_option = '';
         $something_to_show = false;
@@ -876,7 +892,7 @@ function modcp_start09(): void
 
         if ($something_to_show) {
             // if we added either or both of the nav options above, do a str_replace on the nav to display it
-            // need to do a string replace as the hook we're using here is after $usercpnav has been eval'd
+            // need to do a string replacement as the hook we're using here is after $usercpnav has been eval'd
             $usercpnav = str_replace('<!--mysupport_nav_option-->', $mysupport_nav_option, $usercpnav);
         } else {
             // if we didn't add either of the nav options above, replace the code in the template with nothing
@@ -898,6 +914,8 @@ function modcp_start20(): void
     global $db, $cache, $lang, $theme, $templates, $forum, $headerinclude, $header, $footer, $usercpnav, $modcp_nav, $threads_list, $priorities, $mysupport_priority_classes;
 
     $lang->load('mysupport');
+
+    $currentUserLastVisitTime = (int)$mybb->user['lastvisit'];
 
     // checks if we're in the Mod CP, technical threads are enabled, and we're viewing the technical threads list...
     // ... or we're in the User CP, the ability to view a list of support threads is enabled, and we're viewing that list
@@ -928,6 +946,11 @@ function modcp_start20(): void
         // load the priorities and generate the CSS classes
         forumdisplay_start();
 
+        // what forums is this allowed in?
+        $mysupport_forums = implode("','", enabledForums());
+
+        $whereClauses = ["fid IN ('{$mysupport_forums}')"];
+
         // if we have a forum in the URL, we're only dealing with threads in that forum
         // set some stuff for this forum that will be used in various places in this function
         if ($mybb->get_input('fid', MyBB::INPUT_INT)) {
@@ -941,8 +964,7 @@ function modcp_start20(): void
             }
 
             $forum_info = get_forum($fid);
-            $list_where_sql = " AND t.fid = {$fid}";
-            $stats_where_sql = " AND fid = {$fid}";
+            $whereClauses[] = "fid='{$fid}'";
             // if we're viewing threads from a specific forum, add that to the nav too
             if (THIS_SCRIPT == 'modcp.php') {
                 add_breadcrumb(
@@ -968,21 +990,6 @@ function modcp_start20(): void
                     );
                 }
             }
-        } else {
-            $list_where_sql = '';
-            $stats_where_sql = '';
-        }
-
-        // what forums is this allowed in?
-        $mysupport_forums = implode(',', enabledForums());
-
-        // if this string isn't empty, generate a variable to go in the query
-        if (!empty($mysupport_forums)) {
-            $list_in_sql = ' AND t.fid IN (' . $db->escape_string($mysupport_forums) . ')';
-            $stats_in_sql = ' AND fid IN (' . $db->escape_string($mysupport_forums) . ')';
-        } else {
-            $list_in_sql = ' AND t.fid IN (0)';
-            $stats_in_sql = ' AND fid IN (0)';
         }
 
         if ($mybb->settings['mysupport_stats']) {
@@ -993,20 +1000,23 @@ function modcp_start20(): void
                         'action'
                     ) == 'technicalthreads')) {
                 // show a small stats section
+                $threadObjects = [];
+
                 if (THIS_SCRIPT == 'modcp.php') {
-                    $query = $db->simple_select('threads', 'status', "1=1{$stats_in_sql}{$stats_where_sql}");
-                    // 1=1 here because both of these variables could start with AND, so if there's nothing before that, there'll be an SQL error
+                    $threadObjects = threadsGet(
+                        $whereClauses,
+                        ['status'],
+                    );
                 } elseif (THIS_SCRIPT == 'usercp.php') {
-                    $query = $db->simple_select(
-                        'threads',
-                        'status',
-                        "uid = '{$currentUserID}'{$stats_in_sql}{$stats_where_sql}"
+                    $threadObjects = threadsGet(
+                        array_merge(["uid='{$currentUserID}'"], $whereClauses),
+                        ['status'],
                     );
                 }
-                if (isset($query) && $db->num_rows($query) > 0) {
+                if ($threadObjects) {
                     $solved_row = $notsolved_row = $technical_row = '';
                     $total_count = $solved_count = $notsolved_count = $technical_count = 0;
-                    while ($threads = $db->fetch_array($query)) {
+                    foreach ($threadObjects as $threads) {
                         switch ($threads['status']) {
                             case 2:
                                 // we have a technical thread, count it
@@ -1076,15 +1086,16 @@ function modcp_start20(): void
                     );
 
                     if (THIS_SCRIPT == 'usercp.php') {
-                        $query = $db->simple_select(
-                            'threads',
-                            'COUNT(*) AS newthreads',
-                            "lastpost > '" . intval($mybb->user['lastvisit']) . "' OR statustime > '" . intval(
-                                $mybb->user['lastvisit']
-                            ) . "'"
-                        );
-                        $newthreads = $db->fetch_field($query, 'newthreads');
-                        // there's 'new' support threads (reply or action since last visit) so show a link to give a list of just those
+                        $newthreads = (int)(threadsGet(
+                            [
+                                "lastpost>'{$currentUserLastVisitTime}'",
+                                "statustime>'{$currentUserLastVisitTime}'",
+                            ],
+                            ['COUNT(tid) AS new_count'],
+                            ['limit' => 1]
+                        )['new_count'] ?? 0);
+
+                        // there are 'new' support threads (reply or action since last visit) so show a link to give a list of just those
                         if ($newthreads != 0) {
                             $newthreads_text = $lang->sprintf($lang->thread_list_newthreads, intval($newthreads));
                             $newthreads = eval($templates->render('mysupport_modcp_newthreads'));
@@ -1098,47 +1109,72 @@ function modcp_start20(): void
             }
         }
 
+        $threadObjects = [];
+
         // now get the relevant threads
         // the query for if we're in the Mod CP, getting all technical threads
         if (THIS_SCRIPT == 'modcp.php') {
-            $query = $db->query(
-                '
-				SELECT t.tid, t.subject, t.fid, t.uid, t.username, t.lastpost, t.lastposter, t.lastposteruid, t.status, t.statusuid, t.statustime, t.priority, f.name
-				FROM ' . TABLE_PREFIX . 'threads t
-				INNER JOIN ' . TABLE_PREFIX . "forums f
-				ON(t.fid = f.fid AND t.status = '2'{$list_in_sql}{$list_where_sql})
-				ORDER BY t.lastpost DESC
-			"
+            $threadObjects = threadsGet(
+                array_merge(["status='2'"], $whereClauses),
+                [
+                    'tid',
+                    'subject',
+                    'fid',
+                    'uid',
+                    'username',
+                    'lastpost',
+                    'lastposter',
+                    'lastposteruid',
+                    'status',
+                    'statusuid',
+                    'statustime',
+                    'priority',
+                    'statustime',
+                ],
+                ['order_by' => 'lastpost', 'order_dir' => 'DESC']
             );
         } // the query for if we're in the User CP, getting all support threads
         elseif (THIS_SCRIPT == 'usercp.php') {
-            $list_limit_sql = '';
+            $queryOptions = [];
+
             if ($mybb->get_input('action') == 'assignedthreads') {
                 // viewing assigned threads
-                $column = 't.assign';
+                $whereClauses[] = "assign='{$currentUserID}'";
             } elseif ($mybb->get_input('action') == 'supportthreads') {
                 // viewing support threads
-                $column = 't.uid';
-                $list_where_sql .= " AND t.visible = '1'";
+                $whereClauses[] = "uid='{$currentUserID}'";
+
+                $whereClauses[] = "visible='1'";
+
                 if ($mybb->get_input('do') == 'new') {
-                    $list_where_sql .= " AND (t.lastpost > '" . intval(
-                            $mybb->user['lastvisit']
-                        ) . "' OR t.statustime > '" . intval($mybb->user['lastvisit']) . "')";
+                    $whereClauses[] = "(lastpost>'{$currentUserLastVisitTime}' OR statustime>'{$currentUserLastVisitTime}')";
                 }
             } else {
-                $column = 't.uid';
-                $list_where_sql .= " AND t.visible = '1'";
-                $list_limit_sql = 'LIMIT 0, 5';
+                $whereClauses[] = "uid='{$currentUserID}'";
+
+                $whereClauses[] = "visible='1'";
+
+                $queryOptions['limit'] = 5;
             }
-            $query = $db->query(
-                '
-				SELECT t.tid, t.subject, t.fid, t.uid, t.username, t.lastpost, t.lastposter, t.lastposteruid, t.status, t.statusuid, t.statustime, t.assignuid, t.priority, f.name
-				FROM ' . TABLE_PREFIX . 'threads t
-				INNER JOIN ' . TABLE_PREFIX . "forums f
-				ON(t.fid = f.fid AND {$column} = '{$currentUserID}'{$list_in_sql}{$list_where_sql})
-				ORDER BY t.lastpost DESC
-				{$list_limit_sql}
-			"
+
+            $threadObjects = threadsGet(
+                array_merge($whereClauses),
+                [
+                    'tid',
+                    'subject',
+                    'fid',
+                    'uid',
+                    'username',
+                    'lastpost',
+                    'lastposter',
+                    'lastposteruid',
+                    'status',
+                    'statusuid',
+                    'statustime',
+                    'priority',
+                    'assignuid',
+                ],
+                $queryOptions
             );
         }
 
@@ -1170,10 +1206,12 @@ function modcp_start20(): void
         }
 
         $threads = '';
-        if (!isset($query) || $db->num_rows($query) == 0) {
+        if (!$threadObjects) {
             $threads = "<tr><td class=\"trow1\" colspan=\"4\" align=\"center\">{$lang->thread_list_no_results}</td></tr>";
         } else {
-            while ($thread = $db->fetch_array($query)) {
+            foreach ($threadObjects as $thread) {
+                $thread['name'] = get_forum($thread['fid'])['name'];
+
                 $bgcolor = alt_trow();
                 $priority_class = '';
                 if ($thread['priority'] != 0) {
@@ -1200,7 +1238,7 @@ function modcp_start20(): void
 
                 $status_time_date = my_date($mybb->settings['dateformat'], intval($thread['statustime']));
                 $status_time_time = my_date($mybb->settings['timeformat'], intval($thread['statustime']));
-                // if we're in the Mod CP we only need the date and time it was marked technical, don't need the status on every line
+                // if we're in the Mod CP, we only need the date and time it was marked technical, don't need the status on every line
                 if (THIS_SCRIPT == 'modcp.php') {
                     if ($mybb->settings['mysupport_relativetime']) {
                         $status_time = my_date('relative', $thread['statustime']);
@@ -1219,7 +1257,7 @@ function modcp_start20(): void
                         htmlspecialchars_uni($thread['name'])
                     );
                     $view_all_forum_link = 'modcp.php?action=technicalthreads&amp;fid=' . intval($thread['fid']);
-                } // if we're in the User CP we want to get the status...
+                } // if we're in the User CP, we want to get the status...
                 elseif (THIS_SCRIPT == 'usercp.php') {
                     $status = _get_friendly_status(intval($thread['status']));
                     switch ($thread['status']) {
@@ -1362,7 +1400,7 @@ function modcp_start20(): void
         $threadlist_filter_form = eval($templates->render('mysupport_modcp_threadlist_filter_form'));
 
         $threads_list = eval($templates->render('mysupport_threadlist_list'));
-        // we only want to output the page if we've got an action; i.e. we're not viewing the list on the User CP home page
+        // we only want to output the page if we've got an action; i.e., we're not viewing the list on the User CP home page
         if ($mybb->get_input('action')) {
             $threads_page = eval($templates->render('mysupport_threadlist'));
             output_page($threads_page);
@@ -1381,7 +1419,7 @@ function moderation_start(): void
     global $mybb;
 
     // we're hooking into the start of moderation.php, so if we're not submitting a MySupport action, exit now
-    if (strpos($mybb->get_input('action'), 'mysupport') === false) {
+    if (!str_contains($mybb->get_input('action'), 'mysupport')) {
         return;
     }
 
@@ -1410,24 +1448,28 @@ function moderation_start(): void
     }
     clearinline($id, $type);
 
-    $tids = implode(',', array_map('intval', $threads));
+    $tids = implode("','", array_map('intval', $threads));
     $mysupport_threads = [];
-    // in a list of search results, you could see threads that aren't from a MySupport forum. However, the MySupport options will always show in the inline moderation options regardless of this
+    // In a list of search results, you could see threads that aren't from a MySupport forum. However, the MySupport options will always show in the inline moderation options regardless of this
     //  is a way of determining which of the selected threads from a list of search results are in a MySupport forum
     // this isn't necessary for inline moderation via the forum display, as the options only show in MySupport forums to begin with
     if ($type == 'search') {
-        // list of MySupport forums
-        // query all the threads that are in the list of TIDs and where the FID is also in the list of MySupport forums, and where the thread is set to be a support thread
+        // the list of MySupport forums
+        // queries all the threads that are in the list of TIDs and where the FID is also in the list of MySupport forums, and where the thread is set to be a support thread
         // this will knock out the non-MySupport threads
-        $query = $db->simple_select(
-            'threads',
-            'tid',
-            'fid IN (' . $db->escape_string(implode(',', enabledForums())) . ') AND tid IN (' . $db->escape_string(
-                $tids
-            ) . ") AND issupportthread = '1'"
-        );
-        while ($tid = $db->fetch_field($query, 'tid')) {
-            $mysupport_threads[] = intval($tid);
+        $mysupport_forums = implode("','", enabledForums());
+
+        foreach (
+            threadsGet(
+                [
+                    "fid IN ('{$mysupport_forums}')",
+                    "tid IN ('{$tids}')",
+                    "issupportthread='1'",
+                ],
+                ['tid'],
+            ) as $tid => $threadData
+        ) {
+            $mysupport_threads[] = $tid;
         }
         $threads = $mysupport_threads;
         // if the new list of threads is empty, no MySupport threads have been selected
@@ -1436,13 +1478,16 @@ function moderation_start(): void
         }
     } // make sure we only have threads that are set to be support threads
     elseif ($type == 'forum') {
-        $query = $db->simple_select(
-            'threads',
-            'tid',
-            'tid IN (' . $db->escape_string($tids) . ") AND issupportthread = '1'"
-        );
-        while ($tid = $db->fetch_field($query, 'tid')) {
-            $mysupport_threads[] = intval($tid);
+        foreach (
+            threadsGet(
+                [
+                    "tid IN ('{$tids}')",
+                    "issupportthread='1'",
+                ],
+                ['tid'],
+            ) as $tid => $threadData
+        ) {
+            $mysupport_threads[] = $tid;
         }
         $threads = $mysupport_threads;
         // if the new list of threads is empty, no MySupport threads have been selected
@@ -1454,7 +1499,7 @@ function moderation_start(): void
     $mod_log_action = '';
     $redirect = '';
 
-    if (strpos($mybb->get_input('action'), 'status') !== false) {
+    if (str_contains($mybb->get_input('action'), 'status')) {
         $status = str_replace('mysupport_status_', '', $mybb->get_input('action'));
         if ($status == 2 || $status == 4) {
             $hasPerm = is_moderator($fid, 'canmarktechnical');
@@ -1483,7 +1528,7 @@ function moderation_start(): void
 
         _change_status($threads, $status, true);
     }
-    if (strpos($mybb->get_input('action'), 'onhold') !== false) {
+    if (str_contains($mybb->get_input('action'), 'onhold')) {
         $hold = str_replace('mysupport_onhold_', '', $mybb->get_input('action'));
 
         if (!$mybb->usergroup['canmarksolved']) {
@@ -1491,7 +1536,7 @@ function moderation_start(): void
         }
 
         _change_hold($threads, $hold, true);
-    } elseif (strpos($mybb->get_input('action'), 'assign') !== false) {
+    } elseif (str_contains($mybb->get_input('action'), 'assign')) {
         if (!is_moderator($fid, 'canassign')) {
             error($lang->assign_no_perms, $lang->mysupport_error);
         }
@@ -1508,7 +1553,7 @@ function moderation_start(): void
         }
 
         change_assign($threads, $assign, true);
-    } elseif (strpos($mybb->get_input('action'), 'priority') !== false) {
+    } elseif (str_contains($mybb->get_input('action'), 'priority')) {
         if (!is_moderator($fid, 'cansetpriorities')) {
             error($lang->priority_no_perms, $lang->mysupport_error);
         }
@@ -1530,7 +1575,7 @@ function moderation_start(): void
         }
 
         change_priority($threads, $priority, true);
-    } elseif (strpos($mybb->get_input('action'), 'category') !== false) {
+    } elseif (str_contains($mybb->get_input('action'), 'category')) {
         $category = str_replace('mysupport_category_', '', $mybb->get_input('action'));
         if ($category == 0) {
             // in the function to change the category, -1 means removing; 0 is easier to put into the form than -1, so change it back here
@@ -1591,7 +1636,8 @@ function newthread_do_newthread_end(): void
             $update = [
                 'issupportthread' => 0
             ];
-            $db->update_query('threads', $update, "tid = '" . intval($thread_info['tid']) . "'");
+
+            threadsUpdate($update, (int)$thread_info['tid']);
         }
     }
 }
@@ -1611,13 +1657,15 @@ function newthread_start(): void
         // start the standard error message to show
         $deniedsupport_message = $lang->deniedsupport;
         // if a reason has been set for this user
-        if ($mybb->user['deniedsupportreason'] != 0) {
-            $query = $db->simple_select(
-                'mysupport',
-                'name, description',
-                "mid = '" . intval($mybb->user['deniedsupportreason']) . "'"
+        $userDeniedReasonID = (int)$mybb->user['deniedsupportreason'];
+
+        if ($userDeniedReasonID) {
+            $deniedsupportreason = deniedReasonGet(
+                ["mid='{$userDeniedReasonID}'"],
+                ['name', 'description'],
+                ['limit' => 1]
             );
-            $deniedsupportreason = $db->fetch_array($query);
+
             $deniedsupport_message .= '<br /><br />' . $lang->sprintf(
                     $lang->deniedsupport_reason,
                     htmlspecialchars_uni($deniedsupportreason['name'])
@@ -1642,7 +1690,7 @@ function newthread_end(): void
         return;
     }
 
-    $message = htmlspecialchars_uni($forum['mysupport_message_placeholder']);;
+    $message = htmlspecialchars_uni($forum['mysupport_message_placeholder']);
 }
 
 // highlight the best answer from the thread and show the status of the thread in each post
@@ -2255,7 +2303,7 @@ function showthread_start20(): void
             }
             // trying to assign a solved thread
             // this is needed to see if we're trying to assign a currently solved thread whilst at the same time changing the status of it
-            // the option to assign will still be there if it's solved as you may want to unsolve it and assign it again, but we can't assign it if it's staying solved, we have to be unsolving it
+            // the option to assign will still be there if it's solved as you may want to unsolved it and assign it again, but we can't assign it if it's staying solved, we have to be unsolving it
             if ($thread['status'] == 1 && $status != 0) {
                 error($lang->assign_solved, $lang->mysupport_error);
             }
@@ -2265,7 +2313,7 @@ function showthread_start20(): void
             }
 
             $assign_users = get_assign_users();
-            // -1 is what's used to unassign a thread so we need to exclude that
+            // -1 is what's used to unassign a thread, so we need to exclude that
             if (!array_key_exists($assign, $assign_users) && $assign != '-1') {
                 error($lang->assign_invalid, $lang->mysupport_error);
             }
@@ -2333,7 +2381,7 @@ function showthread_start20(): void
                     _change_hold($thread, $onhold);
                 }
 
-                // we need to see if the same user has been submitted so it doesn't run this for no reason
+                // we need to see if the same user has been submitted, so it doesn't run this without reason
                 // we also need to check if it's being marked as solved, if it is we don't need to do anything with assignments, it'll just be ignored
                 if ($assign != $old_assign && ($assign != 0 && $status != 1 && $status != 3)) {
                     change_assign($thread, $assign);
@@ -2390,7 +2438,8 @@ function showthread_start20(): void
                 'bestanswer' => 0
             ];
             // update the bestanswer column for this thread with 0
-            $db->update_query('threads', $status_update, "tid = '" . intval($thread['tid']) . "'");
+
+            threadsUpdate($status_update, (int)$thread['tid']);
 
             // are we removing points for this?
             if (_points_system_enabled()) {
@@ -2412,7 +2461,8 @@ function showthread_start20(): void
                 'bestanswer' => intval($post['pid'])
             ];
             // update the bestanswer column for this thread with the pid of the best answer
-            $db->update_query('threads', $status_update, "tid = '" . intval($thread['tid']) . "'");
+
+            threadsUpdate($status_update, (int)$thread['tid']);
 
             // are we adding points for this?
             if (_points_system_enabled()) {
@@ -2462,7 +2512,7 @@ function usercp_start20(): void
                 'mysupportdisplayastext' => $mybb->get_input('mysupportdisplayastext', MyBB::INPUT_INT)
             ];
 
-            $db->update_query('users', $update, "uid = '" . $currentUserID . "'");
+            usersUpdate($update, $currentUserID);
         } elseif ($mybb->get_input('action') == 'options') {
             $lang->load('mysupport');
 
@@ -2506,21 +2556,20 @@ function xmlhttp(): void
 
     $likestring = $db->escape_string_like($search_query);
 
-    $query = $db->simple_select(
-        'users',
-        'uid, username',
-        "username LIKE '%{$likestring}%' AND uid IN ('{$uids}')",
-        [
-            'order_by' => 'username',
-            'order_dir' => 'asc',
-            'limit_start' => 0,
-            'limit' => 15
-        ]
-    );
-
     $data = [];
 
-    while ($user = $db->fetch_array($query)) {
+    foreach (
+        usersGet(
+            ["username LIKE '%{$likestring}%'", "uid IN ('{$uids}')"],
+            ['uid', 'username'],
+            [
+                'order_by' => 'username',
+                'order_dir' => 'asc',
+                'limit_start' => 0,
+                'limit' => 15
+            ]
+        ) as $user
+    ) {
         $data[] = [
             'uid' => $user['uid'],
             'id' => $user['username'],

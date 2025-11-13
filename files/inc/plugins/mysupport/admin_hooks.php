@@ -31,7 +31,7 @@ use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 use const MySupport\Core\ROOT;
 use const MySupport\Admin\FIELDS_DATA;
 
-function admin_config_plugins_begin01()
+function admin_config_plugins_begin01(): void
 {
     global $mybb, $lang, $page;
 
@@ -304,7 +304,7 @@ function admin_forum_management_edit_commit(): void
         if (isset($mybb->input[$fieldName])) {
             switch ($fieldDefinition['type']) {
                 case 'TEXT':
-                    $updateData[$fieldName] = $db->escape_string($mybb->get_input($fieldName));;
+                    $updateData[$fieldName] = $db->escape_string($mybb->get_input($fieldName));
 
                     break;
                 default:

@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace MySupport\Core;
 
+use Exception;
 use Moderation;
 use MybbStuff_MyAlerts_AlertManager;
 use MybbStuff_MyAlerts_AlertTypeManager;
@@ -152,18 +153,15 @@ function updateCache(int $cacheType = CACHE_TYPE_ALL): void
             $newCachedData['versionCode'] = VERSION_CODE;
         case CACHE_TYPE_ALL:
         case CACHE_TYPE_PRIORITIES:
-            $priorityType = DATABASE_ROW_TYPE_PRIORITY;
 
-            $dbQuery = $db->simple_select(
-                'mysupport',
-                'mid, name, description, extra',
-                "type = '{$priorityType}'",
-                ['order_by' => 'name']
+            $priorityObjects = priorityGet(
+                queryFields: ['name', 'description', 'extra'],
+                queryOptions: ['order_by' => 'name']
             );
 
             $newCachedData['priorities'] = [];
 
-            while ($priorityData = $db->fetch_array($dbQuery)) {
+            foreach ($priorityObjects as $priorityData) {
                 $newCachedData['priorities'][(int)$priorityData['mid']] = [
                     'name' => $priorityData['name'],
                     'description' => $priorityData['description'],
@@ -173,16 +171,14 @@ function updateCache(int $cacheType = CACHE_TYPE_ALL): void
 
         case CACHE_TYPE_ALL:
         case CACHE_TYPE_DENIED_REASONS:
-            $dbQuery = $db->simple_select(
-                'mysupport',
-                'mid, name, description',
-                "type = 'deniedreason'",
-                ['order_by' => 'name']
+            $deniedReasonObjects = deniedReasonGet(
+                queryFields: ['name', 'description'],
+                queryOptions: ['order_by' => 'name']
             );
 
             $newCachedData['deniedReasons'] = [];
 
-            while ($deniedReasonData = $db->fetch_array($dbQuery)) {
+            foreach ($deniedReasonObjects as $deniedReasonData) {
                 $newCachedData['deniedReasons'][(int)$deniedReasonData['mid']] = [
                     'name' => $deniedReasonData['name'],
                     'description' => $deniedReasonData['description'],
@@ -220,7 +216,7 @@ function _get_count(string $type, int $fid = 0): int
 
             foreach ($forums as $forum => $info) {
                 $parentlist = $info['parentlist'];
-                if (strpos(',' . $parentlist . ',', ',' . $fid . ',') !== false) {
+                if (str_contains(',' . $parentlist . ',', ',' . $fid . ',')) {
                     $forums_list[] = $forum;
                 }
             }
@@ -251,7 +247,7 @@ function _get_count(string $type, int $fid = 0): int
 
             foreach ($forums as $forum => $info) {
                 $parentlist = $info['parentlist'];
-                if (strpos(',' . $parentlist . ',', ',' . $fid . ',') !== false) {
+                if (str_contains(',' . $parentlist . ',', ',' . $fid . ',')) {
                     $forums_list[] = $forum;
                 }
             }
@@ -274,17 +270,17 @@ function enabledForums(): array
 {
     global $cache;
 
-    static $mysupport_forums = null;
+    static $enabledForums = null;
 
-    if ($mysupport_forums === null) {
-        $mysupport_forums = [];
+    if ($enabledForums === null) {
+        $enabledForums = [];
 
         $forums = $cache->read('forums');
 
         foreach ($forums as $forum) {
             // if this forum/category has MySupport enabled, add it to the array
             if (!empty($forum['mysupport'])) {
-                $mysupport_forums[(int)$forum['fid']] = (int)$forum['fid'];
+                $enabledForums[(int)$forum['fid']] = (int)$forum['fid'];
             } // if this forum/category hasn't got MySupport enabled...
             else {
                 // ... go through the parent list...
@@ -293,7 +289,7 @@ function enabledForums(): array
                     // ... if this parent has MySupport enabled...
                     if (!empty($forums[$parent]['mysupport'])) {
                         // ... add the original forum we're looking at to the list
-                        $mysupport_forums[(int)$forum['fid']] = (int)$forum['fid'];
+                        $enabledForums[(int)$forum['fid']] = (int)$forum['fid'];
                         // this is for if we enable MySupport for a whole category; this will pick up all the forums inside that category and add them to the array
                     }
                 }
@@ -301,7 +297,7 @@ function enabledForums(): array
         }
     }
 
-    return $mysupport_forums;
+    return $enabledForums;
 }
 
 /**
@@ -360,7 +356,7 @@ function _get_display_status(int $status, int $onhold = 0, int $statustime = 0, 
         }
     }
 
-    // big check to see if either the status is to be show to everybody, only to people who can mark as solved, or to people who can mark as solved or who authored the thread
+    // big check to see if either the status is to be shown to everybody, only to people who can mark as solved, or to people who can mark as solved or who authored the thread
     if ($mybb->settings['mysupport_displayto'] == 'all' || ($mybb->settings['mysupport_displayto'] == 'canmas' && user_group(
                 'canmarksolved'
             )) || ($mybb->settings['mysupport_displayto'] == 'canmasauthor' && (user_group(
@@ -453,7 +449,7 @@ function get_usergroup_permissions(int $uid, array $user = []): array
 /**
  * Check if a points system is enabled for points system integration.
  *
- * @return bool Whether or not your chosen points system is enabled.
+ * @return bool Whether your chosen points system is enabled.
  **/
 function _points_system_enabled(): bool
 {
@@ -533,25 +529,27 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
         require_once MYBB_ROOT . 'inc/class_moderation.php';
         $moderation = new Moderation();
         // the reason it loops through using move_thread is because move_threads doesn't give the option for a redirect
-        // if it's not a multiple thread it will just loop through once as there'd only be one value in the array
+        // if it's not a multiple thread, it will just loop through once as there'd only be one value in the array
         foreach ($move_tids as $move_tid) {
             $moderation->move_thread($move_tid, $move_fid, $move_type, $redirect_time);
         }
     }
 
+    $whereClauses = [];
+
     if ($multiple) {
-        $tids = implode(',', array_map('intval', $thread_info));
-        $where_sql = 'tid IN (' . $db->escape_string($tids) . ')';
+        $tids = implode("','", array_map('intval', $thread_info));
+
+        $whereClauses[] = "tid IN ('{$tids}')";
     } else {
-        $where_sql = "tid = '" . $tid . "'";
+        $whereClauses[] = "tid='{$tid}'";
     }
     $assign_users = [];
 
     // we need to build an array of users who have been assigned threads before the assignment is removed
     if ($status == 1 || $status == 3) {
-        $query = $db->simple_select('threads', 'DISTINCT assign', $where_sql . " AND assign != '0'");
-        while ($user = $db->fetch_field($query, 'assign')) {
-            $assign_users[] = $user;
+        foreach (threadsGet(array_merge(["assign!='0'",], $whereClauses), ['DISTINCT assign']) as $user) {
+            $assign_users[] = (int)$user['assign'];
         }
     }
 
@@ -610,7 +608,14 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
         ];
     }
 
-    $db->update_query('threads', $status_update, $where_sql);
+    foreach (
+        threadsGet(
+            $whereClauses,
+            ['tid']
+        ) as $threadID => $threadData
+    ) {
+        threadsUpdate($status_update, $threadID);
+    }
 
     // if the thread is being marked as technical, being marked as something else after being marked technical, or we're changing the status of multiple threads, recount the number of technical threads
     if ($status == 2 || $old_status == 2 || $multiple) {
@@ -628,7 +633,15 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
             'closed' => 0,
             'closedbymysupport' => 0
         ];
-        $db->update_query('threads', $update, $where_sql . " AND closed = '1' AND closedbymysupport = '1'");
+
+        foreach (
+            threadsGet(
+                array_merge(["closed='1'", "closedbymysupport='1'"], $whereClauses),
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
     }
 
     // get the friendly version of the status for the redirect message and mod log
@@ -741,9 +754,11 @@ function get_assign_users(): array
 
     // who can be assigned threads?
     $groups = $cache->read('usergroups');
+
     $assign_groups = [];
+
     foreach ($groups as $group) {
-        if ($group['canbeassigned'] == 1) {
+        if (!empty($group['canbeassigned'])) {
             $assign_groups[] = intval($group['gid']);
         }
     }
@@ -752,28 +767,27 @@ function get_assign_users(): array
 
     // only continue if there are one or more groups that can be assigned threads
     if (!empty($assign_groups)) {
-        $assigngroups = '';
-        $assigngroups = implode(',', array_map('intval', $assign_groups));
-        $assign_concat_sql = '';
+        $assigngroups = implode("','", $assign_groups);
+
+        $whereClauses = ["usergroup IN ('{$assigngroups}')", "displaygroup IN ('{$assigngroups}')"];
+
         foreach ($assign_groups as $assign_group) {
-            if (!empty($assign_concat_sql)) {
-                $assign_concat_sql .= ' OR ';
-            }
-            $assign_concat_sql .= "CONCAT(',',additionalgroups,',') LIKE '%,{$assign_group},%'";
+            $whereClauses[] = match ($db->type) {
+                'pgsql', 'sqlite' => "','||additionalgroups||',' LIKE '%,{$assign_group},%'",
+                default => "CONCAT(',',additionalgroups,',') LIKE '%,{$assign_group},%'",
+            };
         }
 
-        $query = $db->simple_select(
-            'users',
-            'uid, username',
-            'usergroup IN (' . $db->escape_string($assigngroups) . ') OR displaygroup IN (' . $db->escape_string(
-                $assigngroups
-            ) . ") OR {$assign_concat_sql}",
-            [
-                'order_by' => 'username, uid'
-            ]
-        );
-        while ($assigned = $db->fetch_array($query)) {
-            $assign_users[$assigned['uid']] = $assigned['username'];
+        foreach (
+            usersGet(
+                [implode(' OR ', $whereClauses)],
+                ['uid', 'username'],
+                [
+                    'order_by' => 'username',
+                ]
+            ) as $assigned
+        ) {
+            $assign_users[(int)$assigned['uid']] = $assigned['username'];
         }
     }
     return $assign_users;
@@ -787,38 +801,22 @@ function get_assign_users(): array
  **/
 function get_categories(array $forum): array
 {
-    global $mybb, $db;
+    global $mybb;
 
-    $forums_concat_sql = $groups_concat_sql = '';
+    $prefixesCache = (array)$mybb->cache->read('threadprefixes');
 
-    $parent_list = explode(',', $forum['parentlist']);
-
-    foreach ($parent_list as $parent) {
-        if (!empty($forums_concat_sql)) {
-            $forums_concat_sql .= ' OR ';
-        }
-        $forums_concat_sql .= "CONCAT(',',forums,',') LIKE '%," . intval($parent) . ",%'";
-    }
-    $forums_concat_sql = '(' . $forums_concat_sql . " OR forums = '-1')";
-
-    $usergroup_list = $mybb->user['usergroup'];
-    if (!empty($mybb->user['additionalgroups'])) {
-        $usergroup_list .= ',' . $mybb->user['additionalgroups'];
-    }
-    $usergroup_list = explode(',', $usergroup_list);
-    foreach ($usergroup_list as $usergroup) {
-        if (!empty($groups_concat_sql)) {
-            $groups_concat_sql .= ' OR ';
-        }
-        $groups_concat_sql .= "CONCAT(',',`groups`,',') LIKE '%," . intval($usergroup) . ",%'";
-    }
-    $groups_concat_sql = '(' . $groups_concat_sql . " OR `groups` = '-1')";
-
-    $query = $db->simple_select('threadprefixes', 'pid, prefix', "{$forums_concat_sql} AND {$groups_concat_sql}");
     $categories = [];
-    while ($category = $db->fetch_array($query)) {
-        $categories[$category['pid']] = $category['prefix'];
+
+    foreach ($prefixesCache as $category) {
+        if (is_member($category['groups']) &&
+            is_member(
+                $category['forums'],
+                ['usergroup' => $forum['fid'], 'additionalgroups' => $forum['parentlist']]
+            )) {
+            $categories[(int)$category['pid']] = $category['prefix'];
+        }
     }
+
     return $categories;
 }
 
@@ -826,7 +824,7 @@ function get_categories(array $forum): array
  * Check is MySupport is enabled in this forum.
  *
  * @param int $fid The FID of the thread.
- * @return bool Whether or not this is a MySupport forum.
+ * @return bool Whether this is a MySupport forum.
  **/
 function forum(int $fid): bool
 {
@@ -856,8 +854,9 @@ function forum(int $fid): bool
  * Check the usergroups for MySupport permissions.
  *
  * @param string $perm What permission we're checking.
- * @param int $usergroups Usergroup of the user we're checking.
- **/
+ * @param array $usergroups Usergroup of the user we're checking.
+ * @return bool
+ */
 function user_group(string $perm, array $usergroups = []): bool
 {
     global $mybb, $cache;
@@ -900,19 +899,29 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
 
     $tid = intval($thread_info['tid']);
 
+    $whereClauses = [];
+
     // this'll be the same wherever so set this here
     if ($multiple) {
         $tids = implode(',', array_map('intval', $thread_info));
-        $where_sql = 'tid IN (' . $db->escape_string($tids) . ')';
+        $whereClauses[] = 'tid IN (' . $db->escape_string($tids) . ')';
     } else {
-        $where_sql = "tid = '" . $tid . "'";
+        $whereClauses[] = "tid = '" . $tid . "'";
     }
 
     if ($onhold == 0) {
         $update = [
             'onhold' => 0
         ];
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
             mod_log_action(12, $lang->sprintf($lang->hold_off_success_multi, count($thread_info)));
@@ -928,9 +937,17 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
         if ($multiple) {
             // when changing the hold status via the form in a thread, you can't you can't change the hold status if the thread's solved
             // here, it's not as easy to check for that; instead, only change the hold status if the thread isn't solved
-            $where_sql .= " AND status != '1'";
+            $whereClauses[] = "status != '1'";
         }
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
             mod_log_action(12, $lang->sprintf($lang->hold_on_success_multi, count($thread_info)));
@@ -963,21 +980,21 @@ function change_assign(array $thread_info, int $assign, bool $multiple = false):
         $old_assign = intval($thread_info['assign']);
     }
 
+    $whereClauses = [];
+
     // this'll be the same wherever so set this here
     if ($multiple) {
         $tids = implode(',', array_map('intval', $thread_info));
-        $where_sql = 'tid IN (' . $db->escape_string($tids) . ')';
+
+        $whereClauses[] = "tid IN (' . $db->escape_string($tids) . ')";
     } else {
-        $where_sql = "tid = '" . $tid . "'";
+        $whereClauses[] = "tid='{$tid}'";
     }
 
-    // because we can assign a thread to somebody if it's already assigned to somebody else, we need to get a list of all the users who have been assigned the threads we're dealing with, so we can recount the number of assigned threads for all these users after the assignment has been chnaged
-    $query = $db->simple_select('threads', 'DISTINCT assign', $where_sql . " AND assign != '0'");
-    $assign_users = [
-        $assign => $assign
-    ];
-    while ($user = $db->fetch_field($query, 'assign')) {
-        $assign_users[$user] = $user;
+    // because we can assign a thread to somebody if it's already assigned to somebody else, we need to get a list of all the users who have been assigned the threads we're dealing with, so we can recount the number of assigned threads for all these users after the assignment has been changed
+
+    foreach (threadsGet(array_merge(["assign!='0'",], $whereClauses), ['DISTINCT assign']) as $user) {
+        $assign_users[(int)$user['assign']] = (int)$user['assign'];
     }
 
     $currentUserID = (int)$mybb->user['uid'];
@@ -988,8 +1005,16 @@ function change_assign(array $thread_info, int $assign, bool $multiple = false):
             'assign' => 0,
             'assignuid' => 0
         ];
+
         // remove the assignment on the thread
-        $db->update_query('threads', $update, $where_sql);
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         // get information on who it was assigned to
         $user = get_user($old_assign);
@@ -1012,10 +1037,18 @@ function change_assign(array $thread_info, int $assign, bool $multiple = false):
         if ($multiple) {
             // when assigning via the form in a thread, you can't assign a thread if it's solved
             // here, it's not as easy to check for that; instead, only assign a thread if it isn't solved
-            $where_sql .= " AND status != '1'";
+            $whereClauses[] = "status != '1'";
         }
+
         // assign the thread
-        $db->update_query('threads', $update, $where_sql);
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         $user = get_user($assign);
         $username = $db->escape_string($user['username']);
@@ -1098,19 +1131,29 @@ function change_priority(array $thread_info, int $priority, bool $multiple = fal
     $new_priority = $priorities[$priority];
     $old_priority = $priorities[$thread_info['priority']];
 
+    $whereClauses = [];
+
     // this'll be the same wherever so set this here
     if ($multiple) {
         $tids = implode(',', array_map('intval', $thread_info));
-        $where_sql = 'tid IN (' . $db->escape_string($tids) . ')';
+        $whereClauses[] = 'tid IN (' . $db->escape_string($tids) . ')';
     } else {
-        $where_sql = "tid = '" . $tid . "'";
+        $whereClauses[] = "tid = '" . $tid . "'";
     }
 
     if ($priority == '-1') {
         $update = [
             'priority' => 0
         ];
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
             mod_log_action(8, $lang->sprintf($lang->priority_remove_success_multi, count($thread_info)));
@@ -1128,9 +1171,17 @@ function change_priority(array $thread_info, int $priority, bool $multiple = fal
         if ($multiple) {
             // when setting a priority via the form in a thread, you can't give a thread a priority if it's solved
             // here, it's not as easy to check for that; instead, only set the priority if the thread isn't solved
-            $where_sql .= " AND status != '1'";
+            $whereClauses[] = "status != '1'";
         }
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
             mod_log_action(
@@ -1164,43 +1215,54 @@ function change_priority(array $thread_info, int $priority, bool $multiple = fal
 /**
  * Change the category of a thread
  *
- * @param array $thread_info Information about the thread.
- * @param int $category The ID of the new category.
+ * @param array $threadData Information about the thread.
+ * @param int $categoryID
  * @param bool $multiple If this is changing the priority of multiple threads.
- **/
-function change_category(array $thread_info, int $category, bool $multiple = false): void
+ */
+function change_category(array $threadData, int $categoryID, bool $multiple = false): void
 {
-    global $db, $lang;
+    global $mybb, $db, $lang;
 
-    $tid = intval($thread_info['tid']);
-    $category = $db->escape_string($category);
+    $tid = intval($threadData['tid']);
 
-    $query = $db->simple_select('threadprefixes', 'pid, prefix');
+    $prefixesCache = (array)$mybb->cache->read('threadprefixes');
+
     $categories = [];
-    while ($category_info = $db->fetch_array($query)) {
-        $categories[$category_info['pid']] = htmlspecialchars_uni($category_info['prefix']);
+
+    foreach ($prefixesCache as $categoryData) {
+        $categories[(int)$categoryData['pid']] = $categoryData['prefix'];
     }
 
-    $new_category = $categories[$category];
-    $old_category = $categories[$thread_info['prefix']];
+    $new_category = $categories[$categoryID];
+    $old_category = $categories[$threadData['prefix']];
+
+    $whereClauses = [];
 
     // this'll be the same wherever so set this here
     if ($multiple) {
-        $tids = implode(',', array_map('intval', $thread_info));
-        $where_sql = 'tid IN (' . $db->escape_string($tids) . ')';
+        $tids = implode(',', array_map('intval', $threadData));
+        $whereClauses[] = 'tid IN (' . $db->escape_string($tids) . ')';
     } else {
-        $where_sql = "tid = '" . $tid . "'";
+        $whereClauses[] = "tid = '" . $tid . "'";
     }
 
-    if ($category == '-1') {
+    if ($categoryID == '-1') {
         $update = [
             'prefix' => 0
         ];
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $v
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
-            mod_log_action(10, $lang->sprintf($lang->category_remove_success_multi, count($thread_info)));
-            redirect_message($lang->sprintf($lang->category_remove_success_multi, count($thread_info)));
+            mod_log_action(10, $lang->sprintf($lang->category_remove_success_multi, count($threadData)));
+            redirect_message($lang->sprintf($lang->category_remove_success_multi, count($threadData)));
         } else {
             mod_log_action(10, $lang->sprintf($lang->category_remove_success, $old_category));
             redirect_message(
@@ -1209,23 +1271,31 @@ function change_category(array $thread_info, int $category, bool $multiple = fal
         }
     } else {
         $update = [
-            'prefix' => $category
+            'prefix' => $categoryID
         ];
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $v
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
             mod_log_action(
                 9,
-                $lang->sprintf($lang->category_change_success_to_multi, count($thread_info), $new_category)
+                $lang->sprintf($lang->category_change_success_to_multi, count($threadData), $new_category)
             );
             redirect_message(
                 $lang->sprintf(
                     $lang->category_change_success_to_multi,
-                    count($thread_info),
+                    count($threadData),
                     htmlspecialchars_uni($new_category)
                 )
             );
-        } elseif ($thread_info['prefix'] == 0) {
+        } elseif ($threadData['prefix'] == 0) {
             mod_log_action(9, $lang->sprintf($lang->category_change_success_to, $new_category));
             redirect_message(
                 $lang->sprintf($lang->category_change_success_to, htmlspecialchars_uni($new_category))
@@ -1259,19 +1329,29 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
 
     $tid = intval($thread_info['tid']);
 
+    $whereClauses = [];
+
     // this'll be the same wherever so set this here
     if ($multiple) {
         $tids = implode(',', array_map('intval', $thread_info));
-        $where_sql = 'tid IN (' . $db->escape_string($tids) . ')';
+        $whereClauses[] = 'tid IN (' . $db->escape_string($tids) . ')';
     } else {
-        $where_sql = "tid = '" . $tid . "'";
+        $whereClauses[] = "tid = '" . $tid . "'";
     }
 
     if ($issupportthread == 1) {
         $update = [
             'issupportthread' => 1
         ];
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
             mod_log_action(13, $lang->sprintf($lang->issupportthread_1_multi, count($thread_info)));
@@ -1284,7 +1364,15 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
         $update = [
             'issupportthread' => 0
         ];
-        $db->update_query('threads', $update, $where_sql);
+
+        foreach (
+            threadsGet(
+                $whereClauses,
+                ['tid']
+            ) as $threadID => $threadData
+        ) {
+            threadsUpdate($update, $threadID);
+        }
 
         if ($multiple) {
             mod_log_action(13, $lang->sprintf($lang->issupportthread_0_multi, count($thread_info)));
@@ -1337,7 +1425,7 @@ function redirect_message(string $message): void
 /**
  * Send a PM about a new assignment
  *
- * @param int $uid The UID of who we're assigning it to now.
+ * @param int $uid The UID of whom we're assigning it to now.
  * @param int $fid The FID the thread is in.
  * @param int $tid The TID of the thread.
  **/
@@ -1425,13 +1513,14 @@ function recount_technical_threads(): void
     ];
     $db->update_query('forums', $update);
 
-    $query = $db->simple_select('threads', 'fid', "status = '2'");
     $techthreads = [];
-    while ($fid = $db->fetch_field($query, 'fid')) {
-        if (empty($techthreads[$fid])) {
-            $techthreads[$fid] = 0;
+
+    foreach (threadsGet(["status='2'"], ['fid']) as $threadData) {
+        if (empty($techthreads[(int)$threadData['fid']])) {
+            $techthreads[(int)$threadData['fid']] = 0;
         }
-        $techthreads[$fid]++;
+
+        ++$techthreads[(int)$threadData['fid']];
     }
 
     foreach ($techthreads as $forum => $count) {
@@ -1451,20 +1540,22 @@ function recount_assigned_threads(int $uid): void
 {
     global $db;
 
-    $query = $db->simple_select('threads', 'fid', "assign = '{$uid}' AND status != '1'");
     $assigned = [];
-    while ($fid = $db->fetch_field($query, 'fid')) {
-        if (!$assigned[$fid]) {
-            $assigned[$fid] = 0;
+
+    foreach (threadsGet(["assign='{$uid}'", "status!='1'"], ['fid']) as $threadData) {
+        if (!$assigned[(int)$threadData['fid']]) {
+            $assigned[(int)$threadData['fid']] = 0;
         }
-        $assigned[$fid]++;
+
+        ++$assigned[(int)$threadData['fid']];
     }
     $assigned = serialize($assigned);
 
     $update = [
         'assignedthreads' => $db->escape_string($assigned)
     ];
-    $db->update_query('users', $update, "uid = '{$uid}'");
+
+    usersUpdate($update, $uid);
 }
 
 /**
@@ -1502,9 +1593,7 @@ function update_points(float $points, int $uid, bool $removing = false): void
             $operator = '+';
         }
 
-        $query = $db->write_query(
-            'UPDATE ' . TABLE_PREFIX . "users SET {$column} = {$column} {$operator} '{$points}' WHERE uid = '{$uid}'"
-        );
+        usersUpdate([$column => "{$column}{$operator}'{$points}'"], $uid, true);
     }
 }
 
@@ -1529,7 +1618,99 @@ function isTechnicalStatusEnabled(): bool
     return $isEnabled;
 }
 
-function priority_insert(array $priorityData, int $priorityID = 0, bool $updatePriority = false): int
+function usersGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'users',
+        implode(',', $queryFields),
+        implode(' AND ', $queryFields),
+        $queryOptions
+    );
+
+    if (!$db->num_rows($query)) {
+        return false;
+    }
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $objects = [];
+
+    while ($userData = $db->fetch_array($query)) {
+        if (isset($userData['tid'])) {
+            $objects[(int)$userData['tid']] = $userData;
+        } else {
+            $objects[] = $userData;
+        }
+    }
+
+    return $objects;
+}
+
+function usersUpdate(array $userData, int $userID, bool $noQuote = false): bool
+{
+    global $db;
+
+    try {
+        $db->update_query('users', $userData, "uid='{$userID}'", no_quote: $noQuote);
+    } catch (Exception $e) {
+        return false;
+    }
+
+    return true;
+}
+
+function threadsGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'threads',
+        implode(',', $queryFields),
+        implode(' AND ', $queryFields),
+        $queryOptions
+    );
+
+    if (!$db->num_rows($query)) {
+        return false;
+    }
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $objects = [];
+
+    while ($threadData = $db->fetch_array($query)) {
+        if (isset($threadData['tid'])) {
+            $objects[(int)$threadData['tid']] = $threadData;
+        } else {
+            $objects[] = $threadData;
+        }
+    }
+
+    return $objects;
+}
+
+function threadsUpdate(array $threadData, int $threadID): bool
+{
+    global $db;
+
+    //onhold
+
+    try {
+        $db->update_query('threads', $threadData, "tid='{$threadID}'");
+    } catch (Exception $e) {
+        return false;
+    }
+
+    return true;
+}
+
+function priorityInsert(array $priorityData, int $priorityID = 0, bool $updatePriority = false): int
 {
     global $db;
 
@@ -1570,5 +1751,99 @@ function priority_insert(array $priorityData, int $priorityID = 0, bool $updateP
 
 function priorityUpdate(array $priorityData, int $priorityID = 0, bool $updatePriority = false): int
 {
-    return priority_insert($priorityData, $priorityID, true);
+    return priorityInsert($priorityData, $priorityID, true);
+}
+
+function contentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
+{
+    global $db;
+
+    $queryFields[] = 'mid';
+
+    $query = $db->simple_select(
+        'mysupport',
+        implode(',', $queryFields),
+        implode(' AND ', $queryFields),
+        $queryOptions
+    );
+
+    if (!$db->num_rows($query)) {
+        return false;
+    }
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $objects = [];
+
+    while ($priorityData = $db->fetch_array($query)) {
+        $objects[(int)$priorityData['mid']] = $priorityData;
+    }
+
+    return $objects;
+}
+
+function priorityGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
+{
+    $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+
+    $whereClauses[] = "(type='priority' OR type='{$priorityType}')";
+
+    return contentGet($whereClauses, $queryFields, $queryOptions);
+}
+
+function priorityDelete(int $priorityID): bool
+{
+    global $db;
+
+    $priorityType = DATABASE_ROW_TYPE_PRIORITY;
+
+    try {
+        $db->delete_query('mysupport', "(type='priority' OR type='{$priorityType}') AND mid='{$priorityID}'");
+    } catch (Exception $e) {
+        return false;
+    }
+
+    return true;
+}
+
+function deniedReasonGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
+{
+    $whereClauses[] = "type='deniedreason'";
+
+    return contentGet($whereClauses, $queryFields, $queryOptions);
+}
+
+function deniedReasonDelete(int $deniedReasonID): bool
+{
+    global $db;
+
+    try {
+        $db->delete_query('mysupport', "type='deniedreason' AND mid='{$deniedReasonID}'");
+    } catch (Exception $e) {
+        return false;
+    }
+
+    return true;
+}
+
+function backupGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
+{
+    $whereClauses[] = "type='backup'";
+
+    return contentGet($whereClauses, $queryFields, $queryOptions);
+}
+
+function backupDelete(int $backupID): bool
+{
+    global $db;
+
+    try {
+        $db->delete_query('mysupport', "type='backup' AND mid='{$backupID}'");
+    } catch (Exception $e) {
+        return false;
+    }
+
+    return true;
 }
