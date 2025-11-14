@@ -26,20 +26,43 @@ $l = [
     'mySupportPrioritiesHighDescription' => 'High priority  threads.',
     'mySupportPrioritiesUrgent' => 'Urgent',
     'mySupportPrioritiesUrgentDescription' => 'Urgent priority threads.',
+
+    'mySupportPostBitButtonSolve' => 'Mark as Solved',
+    'mySupportPostBitButtonSolveDescription' => 'Mark this post as solved.',
+    'mySupportPostBitButtonNotSolved' => 'Mark as Not Solved',
+    'mySupportPostBitButtonNotSolvedDescription' => 'Mark this post as not solved',
+    'mySupportPostBitButtonTechnical' => 'Mark as Technical',
+    'mySupportPostBitButtonTechnicalDescription' => 'Mark this post as technical',
+    'mySupportPostBitButtonNotTechnical' => 'Mark as Not Technical',
+    'mySupportPostBitButtonNotTechnicalDescription' => 'Mark this post as not technical',
+    'mySupportPostBitButtonOnhold' => 'Mark as On Hold',
+    'mySupportPostBitButtonOnholdDescription' => 'Mark this post as on hold',
+    'mySupportPostBitButtonNotOnhold' => 'Mark as Not On Hold',
+    'mySupportPostBitButtonNotOnholdDescription' => 'Mark this post as not on hold',
+
+    'mySupportModerationThreadIsSupport' => 'The thread has been marked as a support thread.<br /><br />You will now be redirected to the previous page.',
+    'mySupportModerationThreadIsNotSupport' => 'The thread has been marked as a not support thread.<br /><br />You will now be redirected to the previous page.',
+    'mySupportModerationThreadSolved' => 'The thread has been marked as solved.<br /><br />You will now be redirected to the previous page.',
+    'mySupportModerationThreadNotSolved' => 'The thread has been marked as not solved.<br /><br />You will now be redirected to the previous page.',
+    'mySupportModerationThreadTechnical' => 'The thread has been marked as technical.<br /><br />You will now be redirected to the previous page.',
+    'mySupportModerationThreadNotTechnical' => 'The thread has been marked as not technical.<br /><br />You will now be redirected to the previous page.',
+    'mySupportModerationThreadOnhold' => 'The thread has been marked as onhold.<br /><br />You will now be redirected to the previous page.',
+    'mySupportModerationThreadNotOnhold' => 'The thread has been marked as onhold.<br /><br />You will now be redirected to the previous page.',
 ];
 
 $l['mysupport'] = 'MySupport';
 
-$l['markas'] = 'Mark as:';
+$l['mySupportInlineModerationSolvedGroup'] = 'Mark as:';
 $l['markas_link'] = 'Mark as {1}';
-$l['solved'] = 'Solved';
+$l['mySupportInlineModerationSolved'] = 'Solved';
 $l['solved_close'] = 'Solved (and close)';
-$l['not_solved'] = 'Not Solved';
-$l['technical'] = 'Technical';
-$l['not_technical'] = 'Not Technical';
+$l['mySupportInlineModerationNotSolved'] = 'Not Solved';
+$l['mySupportInlineModerationTechnical'] = 'Technical';
+$l['mySupportInlineModerationNotTechnical'] = 'Not Technical';
 $l['solved_time'] = 'Solved: {1}';
 $l['technical_time'] = 'Technical: {1}';
 $l['onhold'] = 'On hold';
+$l['mySupportInlineModerationAssignFind'] = 'Find';
 
 $l['status_change_success'] = 'Status changed from {1} to {2}.';
 $l['status_change_success_multi'] = 'Status of {1} thread(s) changed to {2}.';
@@ -109,12 +132,14 @@ $l['mysupport_wol_technical'] = 'Viewing Technical Threads';
 $l['mysupport_wol_support_denial'] = 'Managing Support Denial';
 $l['mysupport_wol_support_denial_deny'] = 'Denying Support';
 
-$l['onhold_form'] = 'On hold?';
+$l['mySupportInlineModerationIsSupportThread'] = 'Support Thread';
+$l['mySupportInlineModerationIsNotSupportThread'] = 'Not Support Thread';
 $l['hold_on'] = 'Put thread On Hold';
 $l['hold_off'] = 'Take thread Off Hold';
-$l['hold_status'] = 'Hold status:';
-$l['hold_status_onhold'] = 'On Hold';
-$l['hold_status_offhold'] = 'Off Hold';
+$l['mySupportInlineModerationTechnicalGroup'] = 'Technical status:';
+$l['mySupportInlineModerationOnHoldGroup'] = 'Hold status:';
+$l['mySupportInlineModerationOnHold'] = 'On Hold';
+$l['mySupportInlineModerationNotOnHold'] = 'Off Hold';
 $l['hold_on_success'] = 'Thread put on hold.';
 $l['hold_on_success_multi'] = '{1} thread(s) put on hold.';
 $l['hold_off_success'] = 'Thread taken off hold.';
@@ -136,10 +161,11 @@ $l['jump_to_bestanswer'] = 'Jump to the post that solved this thread.';
 $l['jump_to_bestanswer_tab'] = 'Jump to Best Answer';
 $l['best_answers_given'] = 'Best Answers Given:';
 
+$l['mySupportInlineModeration'] = 'Support Moderation';
 $l['assigned'] = 'Assigned';
 $l['assigned_toyou'] = 'Assigned to you';
-$l['assign_to'] = 'Assign to:';
-$l['assign_to_nobody'] = 'Nobody';
+$l['mySupportInlineModerationAssignGroup'] = 'Assign to:';
+$l['mySupportInlineModerationAssignNobody'] = 'Nobody';
 $l['assigned_to_success'] = 'Assigned to {1}.';
 $l['assigned_to_success_multi'] = 'Assigned {1} thread(s) to {2}.';
 $l['unassigned_from_success'] = 'Unassigned from {1}.';
@@ -159,8 +185,8 @@ You have been assigned a new thread in [url={2}]{3}[/url] titled [url={4}]{5}[/u
 
 You can see all of your assigned threads by clicking [url={7}/usercp.php?action=assignedthreads]here[/url].';
 
-$l['priority'] = 'Priority:';
-$l['priority_none'] = 'None';
+$l['mySupportInlineModerationPriorityGroup'] = 'Priority:';
+$l['mySupportInlineModerationPriorityNone'] = 'None';
 $l['priority_change_success_to'] = 'Priority changed to {1}.';
 $l['priority_change_success_to_multi'] = 'Priority of {1} threads(s) changed to {2}.';
 $l['priority_change_success_fromto'] = 'Priority changed from {1} to {2}.';
@@ -171,16 +197,15 @@ $l['priority_no_perms'] = 'You do not have permission to give a thread a priorit
 $l['priority_solved'] = 'You cannot give a priority to a thread which has been solved. To give a priority to it you need to mark it as not solved as well.';
 $l['priority_invalid'] = 'You have selected an invalid priority.';
 
-$l['category'] = 'Category:';
-$l['category_none'] = 'None';
+$l['mySupportInlineModerationCategoryGroup'] = 'Category:';
+$l['mySupportInlineModerationCategoryNone'] = 'None';
 $l['category_change_success_to'] = 'Category changed to {1}.';
 $l['category_change_success_to_multi'] = 'Category of {1} thread(s) changed to {2}.';
 $l['category_change_success_fromto'] = 'Category changed from {1} to {2}.';
-$l['category_remove_success'] = 'Category of {1} removed.';
+$l['category_remove_success'] = 'Category removed.';
 $l['category_remove_success_multi'] = 'Category removed from {1} thread(s).';
 $l['category_invalid'] = 'You have selected an invalid category.';
 
-$l['issupportthread'] = 'Is support thread?';
 $l['issupportthread_1'] = 'Thread marked as a support thread.';
 $l['issupportthread_1_multi'] = 'Threads marked as support threads.';
 $l['issupportthread_0'] = 'Thread marked as not a support thread.';
@@ -231,7 +256,6 @@ $l['task_mysupport_autosolve_count'] = 'Marked {1} thread(s) as solved.';
 $l['task_mysupport_backup_ran'] = 'All MySupport information was backed up.';
 
 $l['mysupport_tab_more'] = 'More...';
-$l['mysupport_additional_options'] = 'Additional MySupport Options';
 
 $l['mysupport_just_now'] = 'Just Now';
 $l['mysupport_ago'] = 'ago';

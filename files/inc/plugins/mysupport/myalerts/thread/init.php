@@ -17,7 +17,7 @@
 
 declare(strict_types=1);
 
-use function MySupport\Core\loadLanguage;
+use function MySupport\Core\languageLoad;
 
 class MybbStuff_MyAlerts_Formatter_MySupport_ThreadFormatter extends
     MybbStuff_MyAlerts_Formatter_AbstractFormatter
@@ -46,7 +46,7 @@ class MybbStuff_MyAlerts_Formatter_MySupport_ThreadFormatter extends
 
     public function init(): void
     {
-        loadLanguage();
+        languageLoad();
     }
 
     public function buildShowLink(MybbStuff_MyAlerts_Entity_Alert $alert): string

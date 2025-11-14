@@ -1,50 +1,50 @@
 .mysupport_status_technical {
-	color: blue;
+    color: blue;
 }
 
 .mysupport_status_solved {
-	color: green;
+    color: green;
 }
 
 .mysupport_status_notsolved {
-	color: red;
+    color: red;
 }
 
 .mysupport_bar_technical {
-	background: blue;
-	height: 10px;
+    background: blue;
+    height: 10px;
 }
 
 .mysupport_bar_solved {
-	background: green;
-	height: 10px;
+    background: green;
+    height: 10px;
 }
 
 .mysupport_bar_notsolved {
-	background: red;
-	height: 10px;
+    background: red;
+    height: 10px;
 }
 
-.mysupport_bestanswer_highlight {
-	background: #D6ECA6 !important;
+.mySupportBestAnswerHighlight {
+    background: #D6ECA6 !important;
 }
 
-.mysupport_staff_highlight {
-	background: #E6E8FA !important;
+.mySupportStaffHighlight {
+    background: #E6E8FA !important;
 }
 
 .usercp_nav_support_threads {
-	background: url(images/usercp/mysupport_support.png) no-repeat left center;
+    background: url(images/usercp/mysupport_support.png) no-repeat left center;
 }
 
 .usercp_nav_assigned_threads {
-	background: url(images/usercp/mysupport_assigned.png) no-repeat left center;
+    background: url(images/usercp/mysupport_assigned.png) no-repeat left center;
 }
 
 .modcp_nav_tech_threads {
-	background: url(images/modcp/mysupport_technical.png) no-repeat left center;
+    background: url(images/modcp/mysupport_technical.png) no-repeat left center;
 }
 
 .modcp_nav_deny_support {
-	background: url(images/mysupport_no_support.gif) no-repeat left center;
+    background: url(images/mysupport_no_support.png) no-repeat left center;
 }

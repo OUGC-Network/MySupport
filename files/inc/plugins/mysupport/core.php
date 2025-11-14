@@ -36,9 +36,25 @@ const CACHE_TYPE_DENIED_REASONS = 3;
 
 const DATABASE_ROW_TYPE_PRIORITY = 1;
 
+const DATABASE_ROW_TYPE_DENIED_REASON = 2;
+
+const DATABASE_ROW_TYPE_BACKUP = 3;
+
 const REVOKE_DENIED_SUPPORT = -1;
 
-function loadLanguage(): void
+const THREAD_STATUS_NOT_SOLVED = 0;
+
+const THREAD_STATUS_SOLVED = 1;
+
+const THREAD_STATUS_NOT_TECHNICAL = 4;
+
+const THREAD_STATUS_TECHNICAL = 2;
+
+const THREAD_STATUS_NOT_ONHOLD = 0;
+
+const THREAD_STATUS_ONHOLD = 1;
+
+function languageLoad(): void
 {
     global $lang;
 
@@ -80,6 +96,34 @@ function addHooks(string $namespace): void
     }
 }
 
+function getTemplateName(string $templateName = ''): string
+{
+    $templatePrefix = '';
+
+    if ($templateName) {
+        $templatePrefix = '_';
+    }
+
+    return "mysupport{$templatePrefix}{$templateName}";
+}
+
+function getTemplate(string $templateName = '', bool $enableHTMLComments = true): string
+{
+    global $templates;
+
+    if (DEBUG) {
+        $filePath = ROOT . "/templates/{$templateName}.html";
+
+        $templateContents = file_get_contents($filePath);
+
+        $templates->cache[getTemplateName($templateName)] = $templateContents;
+    } elseif (my_strpos($templateName, '/') !== false) {
+        $templateName = substr($templateName, strpos($templateName, '/') + 1);
+    }
+
+    return $templates->render(getTemplateName($templateName), true, $enableHTMLComments);
+}
+
 function get_setting(string $setting_key = '')
 {
     global $mybb;
@@ -91,9 +135,9 @@ function send_alert(int $tid, int $uid, int $author = 0): void
 {
     global $lang, $mybb, $alertType, $db;
 
-    loadLanguage();
+    languageLoad();
 
-    if (!($mybb->settings['mysupport_notifications'] && class_exists('MybbStuff_MyAlerts_AlertTypeManager'))) {
+    if (!(get_setting('notifications') && class_exists('MybbStuff_MyAlerts_AlertTypeManager'))) {
         return;
     }
 
@@ -310,92 +354,74 @@ function _get_friendly_status(int $status = 0): string
 {
     global $lang;
 
-    $lang->load('mysupport');
+    languageLoad();
 
-    switch ($status) {
-        // has it been marked as not technical?
-        case 4:
-            $friendlystatus = $lang->not_technical;
-            break;
-        // is it a technical thread?
-        case 2:
-            $friendlystatus = $lang->technical;
-            break;
-        // no, is it a solved thread?
-        case 3:
-        case 1:
-            $friendlystatus = $lang->solved;
-            break;
-        // must be not solved then
-        default:
-            $friendlystatus = $lang->not_solved;
-    }
-
-    return $friendlystatus;
+    return match ($status) {
+        4 => $lang->not_technical,
+        2 => $lang->technical,
+        3, 1 => $lang->solved,
+        default => $lang->not_solved,
+    };
 }
 
 /**
  * Show the status of a thread.
  *
- * @param int $status The status of the thread.
- * @param int $onhold The time the thread was solved.
- * @param int $statustime The TID of the thread.
- **/
-function _get_display_status(int $status, int $onhold = 0, int $statustime = 0, int $thread_author = 0): string
+ * @param array $threadData
+ * @return string
+ */
+function displayStatusGet(array $threadData): string
 {
+    $status = (int)$threadData['status'];
+
+    $onhold = (int)$threadData['onhold'];
+
+    $statusTime = (int)$threadData['statustime'];
+
+    $theadUserID = (int)$threadData['uid'];
+
     global $mybb, $lang, $templates, $theme, $mysupport_status, $thread;
 
     $currentUserID = (int)$mybb->user['uid'];
-
-    // if this user is logged in, we want to override the global setting for display with their own setting
-    if ($currentUserID && $mybb->settings['mysupport_displaytypeuserchange']) {
-        if ($mybb->user['mysupportdisplayastext'] == 1) {
-            $mybb->settings['mysupport_displaytype'] = 'text';
-        } else {
-            $mybb->settings['mysupport_displaytype'] = 'image';
-        }
-    }
 
     // big check to see if either the status is to be shown to everybody, only to people who can mark as solved, or to people who can mark as solved or who authored the thread
     if ($mybb->settings['mysupport_displayto'] == 'all' || ($mybb->settings['mysupport_displayto'] == 'canmas' && user_group(
                 'canmarksolved'
             )) || ($mybb->settings['mysupport_displayto'] == 'canmasauthor' && (user_group(
                     'canmarksolved'
-                ) || $currentUserID === $thread_author))) {
-        $text = $mybb->settings['mysupport_displaytype'] == 'text';
-
+                ) || $currentUserID === $theadUserID))) {
         if ($mybb->settings['mysupport_relativetime']) {
             $date_time_technical = 0;
 
-            $date_time = my_date('relative', $statustime);
+            $date_time = my_date('relative', $statusTime);
 
-            if (!$text) {
+            if ($mybb->settings['mysupport_displaytype'] !== 'text') {
                 $date_time = strip_tags($date_time);
             }
 
             $status_title = $lang->sprintf($lang->technical_time, $date_time_technical);
         } else {
-            $date_time = my_date('normal', $statustime);
+            $date_time = my_date('normal', $statusTime);
         }
 
-        // if this user cannot mark a thread as technical and people who can't mark as technical can't see that a technical thread is technical, don't execute this
+        // if this user cannot mark a thread as technical and people who can't mark as technical can't see that a technical thread is technical, don't execute this,
         // I used the word technical 4 times in that sentence didn't I? sorry about that
-        if ($status == 2 && !($mybb->settings['mysupport_hidetechnical'] || ($mybb->usergroup['canseetechnotice'] || is_moderator(
+        if ($status === THREAD_STATUS_TECHNICAL && !($mybb->settings['mysupport_hidetechnical'] || ($mybb->usergroup['canseetechnotice'] || is_moderator(
                         $thread['fid'],
                         'canmarktechnical'
                     )))) {
             $status_class = $status_img = 'technical';
             $status_title = htmlspecialchars_uni($lang->sprintf($lang->technical_time, $date_time));
 
-            if ($text) {
+            if ($mybb->settings['mysupport_displaytype'] === 'text') {
                 $status_text = $lang->technical;
             }
-        } elseif ($status == 1) {
+        } elseif ($status === THREAD_STATUS_SOLVED) {
             $status_class = $status_img = 'solved';
             $status_text = $lang->solved;
             $status_title = htmlspecialchars_uni($lang->sprintf($lang->solved_time, $date_time));
 
-            if ($text) {
+            if ($mybb->settings['mysupport_displaytype'] !== 'text') {
                 $status_text = $lang->solved;
             }
         } else {
@@ -403,16 +429,16 @@ function _get_display_status(int $status, int $onhold = 0, int $statustime = 0, 
             $status_text = $status_title = $lang->not_solved;
         }
 
-        if ($onhold == 1) {
+        if ($onhold == THREAD_STATUS_ONHOLD) {
             $status_class = $status_img = 'onhold';
             $status_text = $lang->onhold;
             $status_title = $lang->onhold . ' - ' . $status_title;
         }
 
-        if ($text) {
-            $mysupport_status = eval($templates->render('mysupport_status_text'));
+        if ($mybb->settings['mysupport_displaytype'] === 'text') {
+            $mysupport_status = eval(getTemplate('status_text'));
         } else {
-            $mysupport_status = eval($templates->render('mysupport_status_image'));
+            $mysupport_status = eval(getTemplate('status_image'));
         }
 
         return $mysupport_status;
@@ -475,7 +501,7 @@ function _points_system_enabled(): bool
  * @param int $status The new status.
  * @param bool $multiple If this is changing the status of multiple threads.
  **/
-function _change_status(array $thread_info, int $status = 0, bool $multiple = false): void
+function threadStatusUpdate(array $thread_info, int $status = 0, bool $multiple = false): void
 {
     global $mybb, $db, $lang;
 
@@ -547,7 +573,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
     $assign_users = [];
 
     // we need to build an array of users who have been assigned threads before the assignment is removed
-    if ($status == 1 || $status == 3) {
+    if ($status == THREAD_STATUS_SOLVED || $status == 3) {
         foreach (threadsGet(array_merge(["assign!='0'",], $whereClauses), ['DISTINCT assign']) as $user) {
             $assign_users[] = (int)$user['assign'];
         }
@@ -555,7 +581,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
 
     $currentUserID = (int)$mybb->user['uid'];
 
-    if ($status == 3 || ($status == 1 && $mybb->settings['mysupport_closewhensolved'] == 'always')) {
+    if ($status == 3 || ($status == THREAD_STATUS_SOLVED && $mybb->settings['mysupport_closewhensolved'] == 'always')) {
         // the bit after || here is for if we're marking as solved via marking a post as the best answer, it will close if it's set to always close
         // the incoming status would be 1, but we need to close it if necessary
         $status_update = [
@@ -569,7 +595,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
             'closedbymysupport' => 1,
             'onhold' => 0
         ];
-    } elseif ($status == 0) {
+    } elseif ($status == THREAD_STATUS_NOT_SOLVED) {
         // if we're marking it as unsolved, a post may have been marked as the best answer when it was originally solved, best remove it, as well as rest everything else
         $status_update = [
             'status' => 0,
@@ -614,7 +640,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
             ['tid']
         ) as $threadID => $threadData
     ) {
-        threadsUpdate($status_update, $threadID);
+        threadUpdate($status_update, $threadID);
     }
 
     // if the thread is being marked as technical, being marked as something else after being marked technical, or we're changing the status of multiple threads, recount the number of technical threads
@@ -622,12 +648,12 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
         recount_technical_threads();
     }
     // if the thread is being marked as solved, recount the number of assigned threads for any users who were assigned threads that are now being marked as solved
-    if ($status == 1 || $status == 3) {
+    if ($status == THREAD_STATUS_SOLVED || $status == 3) {
         foreach ($assign_users as $user) {
             recount_assigned_threads($user);
         }
     }
-    if ($status == 0) {
+    if ($status === THREAD_STATUS_NOT_SOLVED) {
         // if we're marking a thread(s) as unsolved, re-open any threads that were closed when they were marked as solved, but not any that were closed by denying support
         $update = [
             'closed' => 0,
@@ -640,7 +666,7 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
                 ['tid']
             ) as $threadID => $threadData
         ) {
-            threadsUpdate($update, $threadID);
+            threadUpdate($update, $threadID);
         }
     }
 
@@ -673,74 +699,188 @@ function _change_status(array $thread_info, int $status = 0, bool $multiple = fa
 }
 
 // loads the dropdown menu for inline thread moderation
-function inline_thread_moderation(): void
+function inline_thread_moderation(int|array $forumIDs, ?array $threadData = null): string
 {
-    global $mybb, $cache, $lang, $templates, $foruminfo, $mysupport_inline_thread_moderation;
+    global $mybb, $cache, $lang;
 
-    $lang->load('mysupport');
+    languageLoad();
 
-    $mysupport_solved = $mysupport_not_solved = $mysupport_solved_and_close = $mysupport_technical = $mysupport_not_technical = '';
-    if (is_moderator($foruminfo['fid'], 'canmarksolved')) {
-        $mysupport_solved = "<option value=\"mysupport_status_1\">-- " . $lang->solved . '</option>';
-        $mysupport_not_solved = "<option value=\"mysupport_status_0\">-- " . $lang->not_solved . '</option>';
-        if ($mybb->settings['mysupport_closewhensolved'] != 'never') {
-            $mysupport_solved_and_close = "<option value=\"mysupport_status_3\">-- " . $lang->solved_close . '</option>';
+    $solveGroup = $technicalGroup = $holdGroup = $assignGroup = $prioritiesGroup = $categoriesGroup = '';
+
+    $threadStatusOnhold = (int)$threadData['onhold'];
+
+    $currentUserID = (int)$mybb->user['uid'];
+
+    $theadUserID = (int)$threadData['uid'];
+
+    if (!empty($mybb->settings['mysupport_enablenotsupportthread']) && (
+            $threadData === null ||
+            (is_int($forumIDs) && is_moderator($forumIDs, 'canmarksolved')) ||
+            ($mybb->settings['mysupport_author'] && $theadUserID === $currentUserID)
+        ) && (empty($threadData['issupportthread']) || $threadStatusOnhold !== THREAD_STATUS_ONHOLD)) {
+        $isSupportOption = '';
+
+        if ($threadData === null || empty($threadData['issupportthread'])) {
+            $isSupportOption = eval(getTemplate('inline_thread_moderation_is_support'));
+        }
+
+        if ($threadData === null || !empty($threadData['issupportthread'])) {
+            $isSupportOption = eval(getTemplate('inline_thread_moderation_is_not_support'));
         }
     }
-    if ($mybb->settings['mysupport_enabletechnical']) {
-        if (is_moderator($foruminfo['fid'], 'canmarktechnical')) {
-            $mysupport_technical = "<option value=\"mysupport_status_2\">-- " . $lang->technical . '</option>';
-            $mysupport_not_technical = "<option value=\"mysupport_status_4\">-- " . $lang->not_technical . '</option>';
+
+    if (($threadData === null || (is_int($forumIDs) && is_moderator($forumIDs, 'canmarksolved'))) &&
+        $threadStatusOnhold !== THREAD_STATUS_ONHOLD) {
+        $solved = $notSolvedOption = '';
+
+        if ($threadData === null || (int)$threadData['status'] !== THREAD_STATUS_SOLVED) {
+            $solved = eval(getTemplate('inline_thread_moderation_solved'));
         }
+
+        if ($threadData === null || (int)$threadData['status'] !== THREAD_STATUS_NOT_SOLVED) {
+            $notSolvedOption = eval(getTemplate('inline_thread_moderation_not_solved'));
+        }
+
+        $solveGroup = eval(getTemplate('inline_thread_moderation_group_solved'));
     }
 
-    $mysupport_onhold = $mysupport_offhold = '';
-    if ($mybb->settings['mysupport_enableonhold']) {
-        if (is_moderator($foruminfo['fid'], 'canmarksolved')) {
-            $mysupport_onhold = "<option value=\"mysupport_onhold_1\">-- " . $lang->hold_status_onhold . '</option>';
-            $mysupport_offhold = "<option value=\"mysupport_onhold_0\">-- " . $lang->hold_status_offhold . '</option>';
+    $threadStatus = (int)$threadData['status'];
+
+    if (!empty($mybb->settings['mysupport_enabletechnical']) && (
+            $threadData === null || (is_int($forumIDs) && is_moderator($forumIDs, 'canmarktechnical'))
+        ) && $threadStatusOnhold !== THREAD_STATUS_ONHOLD) {
+        if ($threadData === null || $threadStatus !== THREAD_STATUS_TECHNICAL) {
+            $technicalOption = eval(getTemplate('inline_thread_moderation_technical'));
         }
+
+        if ($threadData === null || $threadStatus !== THREAD_STATUS_NOT_TECHNICAL) {
+            $notTechnicalOption = eval(getTemplate('inline_thread_moderation_not_technical'));
+        }
+
+        $technicalGroup = eval(getTemplate('inline_thread_moderation_group_technical'));
+    }
+
+    if (!empty($mybb->settings['mysupport_enableonhold']) && (
+            $threadData === null || (is_int($forumIDs) && is_moderator($forumIDs, 'canmarkonhold'))
+        )) {
+        if ($threadData === null || $threadStatusOnhold !== THREAD_STATUS_ONHOLD) {
+            $onholdOption = eval(getTemplate('inline_thread_moderation_onhold'));
+        }
+
+        if ($threadData === null || $threadStatusOnhold !== THREAD_STATUS_NOT_ONHOLD) {
+            $notOnholdOption = eval(getTemplate('inline_thread_moderation_not_onhold'));
+        }
+
+        $holdGroup = eval(getTemplate('inline_thread_moderation_group_onhold'));
     }
 
     if ($mybb->settings['mysupport_enableassign']) {
-        $mysupport_assign = '';
+        $usersOptions = '';
+
         $assign_users = get_assign_users();
+
         // only continue if there are one or more users that can be assigned threads
-        $mysupport_assign .= "<option value=\"mysupport_assign_find\">-- <i>{$lang->my_support_inline_find}</i></option>\n";
         if (!empty($assign_users)) {
-            foreach ($assign_users as $assign_userid => $assign_username) {
-                $mysupport_assign .= "<option value=\"mysupport_assign_" . intval(
-                        $assign_userid
-                    ) . "\">-- " . htmlspecialchars_uni($assign_username) . "</option>\n";
+            foreach ($assign_users as $userID => $assign_username) {
+                $userName = htmlspecialchars_uni($assign_username);
+
+                $usersOptions = eval(getTemplate('inline_thread_moderation_assign_user'));
             }
         }
+
+        $assignGroup = eval(getTemplate('inline_thread_moderation_group_assign'));
     }
 
-    if ($mybb->settings['mysupport_enablepriorities']) {
+    if ($mybb->settings['mysupport_enablepriorities'] && (
+            $threadData === null ||
+            $threadStatusOnhold !== THREAD_STATUS_ONHOLD
+        )) {
         $mysupport_cache = $cache->read('mysupport');
-        $mysupport_priorities = '';
+
+        $prioritiesList = '';
+
         // only continue if there are any priorities
         if (!empty($mysupport_cache['priorities'])) {
-            foreach ($mysupport_cache['priorities'] as $priority) {
-                $mysupport_priorities .= "<option value=\"mysupport_priority_" . intval(
-                        $priority['mid']
-                    ) . "\">-- " . htmlspecialchars_uni($priority['name']) . "</option>\n";
+            foreach ($mysupport_cache['priorities'] as $priorityID => $priorityData) {
+                $priorityName = htmlspecialchars_uni($priorityData['name']);
+
+                $prioritiesList .= eval(getTemplate('inline_thread_moderation_priority'));
             }
         }
-    }
 
-    $mysupport_categories = '';
-    $categories_users = get_categories($foruminfo);
-    // only continue if there are any priorities
-    if (!empty($categories_users)) {
-        foreach ($categories_users as $category_id => $category_name) {
-            $mysupport_categories .= "<option value=\"mysupport_priority_" . intval(
-                    $category_id
-                ) . "\">-- " . htmlspecialchars_uni($category_name) . "</option>\n";
+        if ($prioritiesList) {
+            $prioritiesGroup = eval(getTemplate('inline_thread_moderation_group_priority'));
         }
     }
 
-    $mysupport_inline_thread_moderation = eval($templates->render('mysupport_inline_thread_moderation'));
+    if (is_int($forumIDs)) {
+        $categoriesCache = get_categories($forumIDs);
+    } else {
+        $categoriesCache = [];
+
+        foreach ($forumIDs as $forumID) {
+            $categoriesCache = array_merge($categoriesCache, get_categories((int)$forumID));
+        }
+    }
+
+    // only continue if there are any priorities
+    if (!empty($categoriesCache) && (
+            $threadData === null ||
+            $threadStatusOnhold !== THREAD_STATUS_ONHOLD
+        )) {
+        $currentCategoryID = $threadData === null ? 0 : (int)$threadData['prefix'];
+
+        $categoryList = '';
+
+        foreach ($categoriesCache as $categoryID => $categoryName) {
+            if ($threadData !== null && $currentCategoryID && $currentCategoryID === $categoryID) {
+                continue;
+            }
+
+            $categoryName = htmlspecialchars_uni($categoryName);
+
+            $categoryList .= eval(getTemplate('inline_thread_moderation_category'));
+        }
+
+        $categoryNone = '';
+
+        if ($threadData === null || $currentCategoryID) {
+            $categoryNone = eval(getTemplate('inline_thread_moderation_category_none'));
+        }
+
+        if ($categoryList || $categoryNone) {
+            $categoriesGroup = eval(getTemplate('inline_thread_moderation_group_categories'));
+        }
+    }
+
+    if ($solveGroup || $technicalGroup || $holdGroup || $assignGroup || $prioritiesGroup || $categoriesGroup) {
+        return eval(getTemplate('inline_thread_moderation'));
+    }
+
+    return '';
+}
+
+function priorityClassGetName(int $priorityID): string
+{
+    global $cache;
+
+    $prioritiesCache = $cache->read('mysupport');
+
+    if (!empty($prioritiesCache['priorities']) &&
+        !empty($prioritiesCache['priorities'][$priorityID]) &&
+        !empty($prioritiesCache['priorities'][$priorityID]['name'])) {
+        return strtolower(
+            htmlspecialchars_uni(
+                preg_replace(
+                    '/[^A-Za-z0-9 ]/',
+                    '_',
+                    $prioritiesCache['priorities'][$priorityID]['name']
+                ),
+            )
+        );
+    }
+
+    return '';
 }
 
 /**
@@ -796,12 +936,14 @@ function get_assign_users(): array
 /**
  * Build an array of available categories (thread prefixes). Used to build the dropdown menus, and also check a valid category has been chosen.
  *
- * @param array $forum Info on the forum.
+ * @param int $forumID
  * @return array Array of available categories.
- **/
-function get_categories(array $forum): array
+ */
+function get_categories(int $forumID): array
 {
     global $mybb;
+
+    $forumData = get_forum($forumID);
 
     $prefixesCache = (array)$mybb->cache->read('threadprefixes');
 
@@ -811,7 +953,7 @@ function get_categories(array $forum): array
         if (is_member($category['groups']) &&
             is_member(
                 $category['forums'],
-                ['usergroup' => $forum['fid'], 'additionalgroups' => $forum['parentlist']]
+                ['usergroup' => $forumData['fid'], 'additionalgroups' => $forumData['parentlist']]
             )) {
             $categories[(int)$category['pid']] = $category['prefix'];
         }
@@ -893,7 +1035,7 @@ function user_group(string $perm, array $usergroups = []): bool
  * @param int $onhold The new hold status.
  * @param bool $multiple If this is changing the hold status of multiple threads.
  **/
-function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = false): void
+function threadOnholdStatusUpdate(array $thread_info, int $onhold = 0, bool $multiple = false): void
 {
     global $db, $lang;
 
@@ -920,7 +1062,7 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
                 ['tid']
             ) as $threadID => $threadData
         ) {
-            threadsUpdate($update, $threadID);
+            threadUpdate($update, $threadID);
         }
 
         if ($multiple) {
@@ -946,7 +1088,7 @@ function _change_hold(array $thread_info, int $onhold = 0, bool $multiple = fals
                 ['tid']
             ) as $threadID => $threadData
         ) {
-            threadsUpdate($update, $threadID);
+            threadUpdate($update, $threadID);
         }
 
         if ($multiple) {
@@ -1013,7 +1155,7 @@ function change_assign(array $thread_info, int $assign, bool $multiple = false):
                 ['tid']
             ) as $threadID => $threadData
         ) {
-            threadsUpdate($update, $threadID);
+            threadUpdate($update, $threadID);
         }
 
         // get information on who it was assigned to
@@ -1047,7 +1189,7 @@ function change_assign(array $thread_info, int $assign, bool $multiple = false):
                 ['tid']
             ) as $threadID => $threadData
         ) {
-            threadsUpdate($update, $threadID);
+            threadUpdate($update, $threadID);
         }
 
         $user = get_user($assign);
@@ -1108,119 +1250,41 @@ function change_assign(array $thread_info, int $assign, bool $multiple = false):
 /**
  * Change the priority of a thread
  *
- * @param array $thread_info Information about the thread.
- * @param int $priority The ID of the new priority.
- * @param bool $multiple
- * @return void If this is changing the priority of multiple threads.
+ * @param int $threadID The ID of the thread.
+ * @param int $priorityID The ID of the new priority.
+ * @return void
  */
-function change_priority(array $thread_info, int $priority, bool $multiple = false): void
+function threadPriorityUpdate(int $threadID, int $priorityID): void
 {
-    global $db, $cache, $lang;
-
-    $tid = intval($thread_info['tid']);
-    $priority = $db->escape_string($priority);
-
-    $mysupport_cache = $cache->read('mysupport');
-    $priorities = [];
-    if (!empty($mysupport_cache['priorities'])) {
-        foreach ($mysupport_cache['priorities'] as $priority_info) {
-            $priorities[$priority_info['mid']] = $priority_info['name'];
-        }
+    if ($priorityID === -1) {
+        $priorityID = 0;
     }
 
-    $new_priority = $priorities[$priority];
-    $old_priority = $priorities[$thread_info['priority']];
-
-    $whereClauses = [];
-
-    // this'll be the same wherever so set this here
-    if ($multiple) {
-        $tids = implode(',', array_map('intval', $thread_info));
-        $whereClauses[] = 'tid IN (' . $db->escape_string($tids) . ')';
-    } else {
-        $whereClauses[] = "tid = '" . $tid . "'";
-    }
-
-    if ($priority == '-1') {
-        $update = [
-            'priority' => 0
-        ];
-
-        foreach (
-            threadsGet(
-                $whereClauses,
-                ['tid']
-            ) as $threadID => $threadData
-        ) {
-            threadsUpdate($update, $threadID);
-        }
-
-        if ($multiple) {
-            mod_log_action(8, $lang->sprintf($lang->priority_remove_success_multi, count($thread_info)));
-            redirect_message($lang->sprintf($lang->priority_remove_success_multi, count($thread_info)));
-        } else {
-            mod_log_action(8, $lang->sprintf($lang->priority_remove_success, $old_priority));
-            redirect_message(
-                $lang->sprintf($lang->priority_remove_success, htmlspecialchars_uni($old_priority))
-            );
-        }
-    } else {
-        $update = [
-            'priority' => intval($priority)
-        ];
-        if ($multiple) {
-            // when setting a priority via the form in a thread, you can't give a thread a priority if it's solved
-            // here, it's not as easy to check for that; instead, only set the priority if the thread isn't solved
-            $whereClauses[] = "status != '1'";
-        }
-
-        foreach (
-            threadsGet(
-                $whereClauses,
-                ['tid']
-            ) as $threadID => $threadData
-        ) {
-            threadsUpdate($update, $threadID);
-        }
-
-        if ($multiple) {
-            mod_log_action(
-                6,
-                $lang->sprintf($lang->priority_change_success_to_multi, count($thread_info), $new_priority)
-            );
-            redirect_message(
-                $lang->sprintf($lang->priority_change_success_to_multi, count($thread_info), $new_priority)
-            );
-        } elseif ($thread_info['priority'] == 0) {
-            mod_log_action(7, $lang->sprintf($lang->priority_change_success_to, $new_priority));
-            redirect_message(
-                $lang->sprintf($lang->priority_change_success_to, htmlspecialchars_uni($new_priority))
-            );
-        } else {
-            mod_log_action(
-                7,
-                $lang->sprintf($lang->priority_change_success_fromto, $old_priority, $new_priority)
-            );
-            redirect_message(
-                $lang->sprintf(
-                    $lang->priority_change_success_fromto,
-                    htmlspecialchars_uni($old_priority),
-                    htmlspecialchars_uni($new_priority)
-                )
-            );
-        }
-    }
+    threadUpdate(['priority' => $priorityID], $threadID);
 }
 
 /**
  * Change the category of a thread
  *
- * @param array $threadData Information about the thread.
+ * @param int $threadID The thread ID.
  * @param int $categoryID
- * @param bool $multiple If this is changing the priority of multiple threads.
+ * @param bool $multiple
  */
-function change_category(array $threadData, int $categoryID, bool $multiple = false): void
+function threadCategoryUpdate(int $threadID, int $categoryID, bool $multiple = false): void
 {
+    if ($categoryID === -1) {
+        $categoryID = 0;
+    }
+
+    threadUpdate(['prefix' => $categoryID], $threadID);
+
+
+    ///
+    ///
+    ///
+    ///
+    ///
+
     global $mybb, $db, $lang;
 
     $tid = intval($threadData['tid']);
@@ -1244,75 +1308,6 @@ function change_category(array $threadData, int $categoryID, bool $multiple = fa
         $whereClauses[] = 'tid IN (' . $db->escape_string($tids) . ')';
     } else {
         $whereClauses[] = "tid = '" . $tid . "'";
-    }
-
-    if ($categoryID == '-1') {
-        $update = [
-            'prefix' => 0
-        ];
-
-        foreach (
-            threadsGet(
-                $whereClauses,
-                ['tid']
-            ) as $threadID => $v
-        ) {
-            threadsUpdate($update, $threadID);
-        }
-
-        if ($multiple) {
-            mod_log_action(10, $lang->sprintf($lang->category_remove_success_multi, count($threadData)));
-            redirect_message($lang->sprintf($lang->category_remove_success_multi, count($threadData)));
-        } else {
-            mod_log_action(10, $lang->sprintf($lang->category_remove_success, $old_category));
-            redirect_message(
-                $lang->sprintf($lang->category_remove_success, htmlspecialchars_uni($old_category))
-            );
-        }
-    } else {
-        $update = [
-            'prefix' => $categoryID
-        ];
-
-        foreach (
-            threadsGet(
-                $whereClauses,
-                ['tid']
-            ) as $threadID => $v
-        ) {
-            threadsUpdate($update, $threadID);
-        }
-
-        if ($multiple) {
-            mod_log_action(
-                9,
-                $lang->sprintf($lang->category_change_success_to_multi, count($threadData), $new_category)
-            );
-            redirect_message(
-                $lang->sprintf(
-                    $lang->category_change_success_to_multi,
-                    count($threadData),
-                    htmlspecialchars_uni($new_category)
-                )
-            );
-        } elseif ($threadData['prefix'] == 0) {
-            mod_log_action(9, $lang->sprintf($lang->category_change_success_to, $new_category));
-            redirect_message(
-                $lang->sprintf($lang->category_change_success_to, htmlspecialchars_uni($new_category))
-            );
-        } else {
-            mod_log_action(
-                9,
-                $lang->sprintf($lang->category_change_success_fromto, $old_category, $new_category)
-            );
-            redirect_message(
-                $lang->sprintf(
-                    $lang->category_change_success_fromto,
-                    htmlspecialchars_uni($old_category),
-                    htmlspecialchars_uni($new_category)
-                )
-            );
-        }
     }
 }
 
@@ -1350,7 +1345,7 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
                 ['tid']
             ) as $threadID => $threadData
         ) {
-            threadsUpdate($update, $threadID);
+            threadUpdate($update, $threadID);
         }
 
         if ($multiple) {
@@ -1371,7 +1366,7 @@ function change_issupportthread(array $thread_info, int $issupportthread, bool $
                 ['tid']
             ) as $threadID => $threadData
         ) {
-            threadsUpdate($update, $threadID);
+            threadUpdate($update, $threadID);
         }
 
         if ($multiple) {
@@ -1413,13 +1408,16 @@ function mod_log_action(int $id, string $message): void
  **/
 function redirect_message(string $message): void
 {
-    global $redirect;
+    global $mySupportRedirectMessages;
+
+    isset($mySupportRedirectMessages) || $mySupportRedirectMessages = '';
 
     // if the message isn't empty, add a new line
-    if (!empty($redirect)) {
-        $redirect .= '<br /><br />';
+    if ($mySupportRedirectMessages !== '') {
+        $mySupportRedirectMessages .= '<br /><br />';
     }
-    $redirect .= $message;
+
+    $mySupportRedirectMessages .= $message;
 }
 
 /**
@@ -1555,7 +1553,7 @@ function recount_assigned_threads(int $uid): void
         'assignedthreads' => $db->escape_string($assigned)
     ];
 
-    usersUpdate($update, $uid);
+    userUpdate($update, $uid);
 }
 
 /**
@@ -1571,19 +1569,12 @@ function update_points(float $points, int $uid, bool $removing = false): void
 
     $points = intval($points);
 
-    switch ($mybb->settings['mysupport_pointssystem']) {
-        case 'myps':
-            $column = 'myps';
-            break;
-        case 'newpoints':
-            $column = 'newpoints';
-            break;
-        case 'other':
-            $column = $db->escape_string($mybb->settings['mysupport_pointssystemcolumn']);
-            break;
-        default:
-            $column = '';
-    }
+    $column = match ($mybb->settings['mysupport_pointssystem']) {
+        'myps' => 'myps',
+        'newpoints' => 'newpoints',
+        'other' => $db->escape_string($mybb->settings['mysupport_pointssystemcolumn']),
+        default => '',
+    };
 
     // if it somehow had to resort to the default option above or 'other' was selected but no custom column name was specified, don't run the query because it's going to create an SQL error, no column to update
     if (!empty($column)) {
@@ -1593,7 +1584,7 @@ function update_points(float $points, int $uid, bool $removing = false): void
             $operator = '+';
         }
 
-        usersUpdate([$column => "{$column}{$operator}'{$points}'"], $uid, true);
+        userUpdate([$column => "{$column}{$operator}'{$points}'"], $uid, true);
     }
 }
 
@@ -1625,7 +1616,7 @@ function usersGet(array $whereClauses = [], array $queryFields = [], array $quer
     $query = $db->simple_select(
         'users',
         implode(',', $queryFields),
-        implode(' AND ', $queryFields),
+        implode(' AND ', $whereClauses),
         $queryOptions
     );
 
@@ -1650,7 +1641,7 @@ function usersGet(array $whereClauses = [], array $queryFields = [], array $quer
     return $objects;
 }
 
-function usersUpdate(array $userData, int $userID, bool $noQuote = false): bool
+function userUpdate(array $userData, int $userID, bool $noQuote = false): bool
 {
     global $db;
 
@@ -1667,10 +1658,14 @@ function threadsGet(array $whereClauses = [], array $queryFields = [], array $qu
 {
     global $db;
 
+    if (empty($queryFields)) {
+        $queryFields[] = 'tid';
+    }
+
     $query = $db->simple_select(
         'threads',
         implode(',', $queryFields),
-        implode(' AND ', $queryFields),
+        implode(' AND ', $whereClauses),
         $queryOptions
     );
 
@@ -1695,7 +1690,7 @@ function threadsGet(array $whereClauses = [], array $queryFields = [], array $qu
     return $objects;
 }
 
-function threadsUpdate(array $threadData, int $threadID): bool
+function threadUpdate(array $threadData, int $threadID): bool
 {
     global $db;
 
@@ -1710,15 +1705,43 @@ function threadsUpdate(array $threadData, int $threadID): bool
     return true;
 }
 
-function priorityInsert(array $priorityData, int $priorityID = 0, bool $updatePriority = false): int
+function contentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
+{
+    global $db;
+
+    $queryFields[] = 'mid';
+
+    $query = $db->simple_select(
+        'mysupport',
+        implode(',', $queryFields),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (!$db->num_rows($query)) {
+        return false;
+    }
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $objects = [];
+
+    while ($priorityData = $db->fetch_array($query)) {
+        $objects[(int)$priorityData['mid']] = $priorityData;
+    }
+
+    return $objects;
+}
+
+function priorityInsert(array $priorityData, int $priorityID = 0, bool $isUpdate = false): int
 {
     global $db;
 
     $insert_data = [];
 
-    if (isset($priorityData['type'])) {
-        $insert_data['type'] = $db->escape_string($priorityData['type']);
-    }
+    $insert_data['type'] = DATABASE_ROW_TYPE_PRIORITY;
 
     if (isset($priorityData['name'])) {
         $insert_data['name'] = $db->escape_string($priorityData['name']);
@@ -1740,7 +1763,7 @@ function priorityInsert(array $priorityData, int $priorityID = 0, bool $updatePr
         $insert_data['allowed_forums'] = $db->escape_string($priorityData['allowed_forums']);
     }
 
-    if ($updatePriority) {
+    if ($isUpdate) {
         $db->update_query('mysupport', $insert_data, "mid='{$priorityID}'");
 
         return $priorityID;
@@ -1749,46 +1772,16 @@ function priorityInsert(array $priorityData, int $priorityID = 0, bool $updatePr
     return (int)$db->insert_query('mysupport', $insert_data);
 }
 
-function priorityUpdate(array $priorityData, int $priorityID = 0, bool $updatePriority = false): int
+function priorityUpdate(array $priorityData, int $priorityID): int
 {
     return priorityInsert($priorityData, $priorityID, true);
-}
-
-function contentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
-{
-    global $db;
-
-    $queryFields[] = 'mid';
-
-    $query = $db->simple_select(
-        'mysupport',
-        implode(',', $queryFields),
-        implode(' AND ', $queryFields),
-        $queryOptions
-    );
-
-    if (!$db->num_rows($query)) {
-        return false;
-    }
-
-    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
-        return (array)$db->fetch_array($query);
-    }
-
-    $objects = [];
-
-    while ($priorityData = $db->fetch_array($query)) {
-        $objects[(int)$priorityData['mid']] = $priorityData;
-    }
-
-    return $objects;
 }
 
 function priorityGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
 {
     $priorityType = DATABASE_ROW_TYPE_PRIORITY;
 
-    $whereClauses[] = "(type='priority' OR type='{$priorityType}')";
+    $whereClauses[] = "type='{$priorityType}'";
 
     return contentGet($whereClauses, $queryFields, $queryOptions);
 }
@@ -1800,7 +1793,7 @@ function priorityDelete(int $priorityID): bool
     $priorityType = DATABASE_ROW_TYPE_PRIORITY;
 
     try {
-        $db->delete_query('mysupport', "(type='priority' OR type='{$priorityType}') AND mid='{$priorityID}'");
+        $db->delete_query('mysupport', "type='{$priorityType}' AND mid='{$priorityID}'");
     } catch (Exception $e) {
         return false;
     }
@@ -1808,9 +1801,41 @@ function priorityDelete(int $priorityID): bool
     return true;
 }
 
+function deniedReasonInsert(array $deniedReasonData, int $deniedReasonID = 0, bool $isUpdate = false): int
+{
+    global $db;
+
+    $insert_data = [];
+
+    $insert_data['type'] = DATABASE_ROW_TYPE_DENIED_REASON;
+
+    if (isset($deniedReasonData['name'])) {
+        $insert_data['name'] = $db->escape_string($deniedReasonData['name']);
+    }
+
+    if (isset($deniedReasonData['description'])) {
+        $insert_data['description'] = $db->escape_string($deniedReasonData['description']);
+    }
+
+    if ($isUpdate) {
+        $db->update_query('mysupport', $insert_data, "mid='{$deniedReasonID}'");
+
+        return $deniedReasonID;
+    }
+
+    return (int)$db->insert_query('mysupport', $insert_data);
+}
+
+function deniedReasonUpdate(array $deniedReasonData, int $deniedReasonID): int
+{
+    return deniedReasonInsert($deniedReasonData, $deniedReasonID, true);
+}
+
 function deniedReasonGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
 {
-    $whereClauses[] = "type='deniedreason'";
+    $deniedReasonType = DATABASE_ROW_TYPE_DENIED_REASON;
+
+    $whereClauses[] = "type='{$deniedReasonType}'";
 
     return contentGet($whereClauses, $queryFields, $queryOptions);
 }
@@ -1819,8 +1844,10 @@ function deniedReasonDelete(int $deniedReasonID): bool
 {
     global $db;
 
+    $deniedReasonType = DATABASE_ROW_TYPE_DENIED_REASON;
+
     try {
-        $db->delete_query('mysupport', "type='deniedreason' AND mid='{$deniedReasonID}'");
+        $db->delete_query('mysupport', "type='{$deniedReasonType}' AND mid='{$deniedReasonID}'");
     } catch (Exception $e) {
         return false;
     }
@@ -1828,9 +1855,45 @@ function deniedReasonDelete(int $deniedReasonID): bool
     return true;
 }
 
+function backupInsert(array $backupData, int $backupID = 0, bool $isUpdate = false): int
+{
+    global $db;
+
+    $insert_data = [];
+
+    $insert_data['type'] = DATABASE_ROW_TYPE_BACKUP;
+
+    if (isset($backupData['name'])) {
+        $insert_data['name'] = $db->escape_string($backupData['name']);
+    }
+
+    if (isset($backupData['description'])) {
+        $insert_data['description'] = $db->escape_string($backupData['description']);
+    }
+
+    if (isset($priorityData['extra'])) {
+        $insert_data['extra'] = $db->escape_string($priorityData['extra']);
+    }
+
+    if ($isUpdate) {
+        $db->update_query('mysupport', $insert_data, "mid='{$backupID}'");
+
+        return $backupID;
+    }
+
+    return (int)$db->insert_query('mysupport', $insert_data);
+}
+
+function backupUpdate(array $backupData, int $backupID): int
+{
+    return backupInsert($backupData, $backupID, true);
+}
+
 function backupGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array|false
 {
-    $whereClauses[] = "type='backup'";
+    $backupType = DATABASE_ROW_TYPE_BACKUP;
+
+    $whereClauses[] = "type='{$backupType}'";
 
     return contentGet($whereClauses, $queryFields, $queryOptions);
 }
@@ -1839,8 +1902,10 @@ function backupDelete(int $backupID): bool
 {
     global $db;
 
+    $backupType = DATABASE_ROW_TYPE_BACKUP;
+
     try {
-        $db->delete_query('mysupport', "type='backup' AND mid='{$backupID}'");
+        $db->delete_query('mysupport', "type='{$backupType}' AND mid='{$backupID}'");
     } catch (Exception $e) {
         return false;
     }

@@ -22,9 +22,9 @@ $l['mysupport_desc'] = 'Add features to your forum to help with giving support. 
 
 $l['mysupport_task_description'] = 'MySupport Task';
 
-$l['solved'] = 'Solved';
-$l['not_solved'] = 'Not Solved';
-$l['technical'] = 'Technical';
+$l['mySupportInlineModerationSolved'] = 'Solved';
+$l['mySupportInlineModerationNotSolved'] = 'Not Solved';
+$l['mySupportInlineModerationTechnical'] = 'Technical';
 $l['thread'] = 'Thread';
 $l['forum'] = 'Forum';
 $l['started_by'] = 'Started by';
@@ -283,8 +283,17 @@ $l['mysupport_moderators_canmarkbestanswer'] = $l['mysupport_usergroups_canmarkb
 $l['mysupport_moderators_canmarkonhold'] = $l['mysupport_usergroups_canmarkonhold'];
 $l['mysupport_moderators_canmarkasnonsupport'] = $l['mysupport_usergroups_canmarkasnonsupport'];
 
-$l['my_support_inline_find'] = 'Find';
+$l['mySupportInlineModerationAssignFind'] = 'Find';
 
 $l = array_merge([
+    'mySupportPrioritiesLow' => 'Low',
+    'mySupportPrioritiesLowDescription' => 'Low priority threads.',
+    'mySupportPrioritiesNormal' => 'Normal',
+    'mySupportPrioritiesNormalDescription' => 'Normal priority threads.',
+    'mySupportPrioritiesHigh' => 'High',
+    'mySupportPrioritiesHighDescription' => 'High priority  threads.',
+    'mySupportPrioritiesUrgent' => 'Urgent',
+    'mySupportPrioritiesUrgentDescription' => 'Urgent priority threads.',
+
     'mysupport_pluginlibrary' => 'This plugin requires <a href="{1}">PluginLibrary</a> version {2} or later to be uploaded to your forum.'
 ], $l);

@@ -22,7 +22,7 @@ namespace MySupport\AdminHooks;
 use Form;
 use MyBB;
 
-use function MySupport\Core\loadLanguage;
+use function MySupport\Core\languageLoad;
 use function MySupport\Admin\getSettingGroupID;
 use function MySupport\MyAlerts\getAvailableLocations;
 use function MySupport\MyAlerts\installLocation;
@@ -39,7 +39,7 @@ function admin_config_plugins_begin01(): void
         return;
     }
 
-    loadLanguage();
+    languageLoad();
 
     if ($mybb->request_method !== 'post') {
         $page->output_confirm_action(
@@ -117,7 +117,7 @@ function admin_config_menu(array $subMenuItems): array
 {
     global $lang;
 
-    loadLanguage();
+    languageLoad();
 
     $subMenuItems[] = [
         'id' => 'mysupport',
@@ -132,7 +132,7 @@ function admin_config_permissions(array $adminPermissions): array
 {
     global $lang;
 
-    loadLanguage();
+    languageLoad();
 
     $adminPermissions['mysupport'] = $lang->can_manage_mysupport;
 
@@ -173,7 +173,7 @@ function admin_formcontainer_end(array &$formArguments): array
         return $formArguments;
     }
 
-    loadLanguage();
+    languageLoad();
 
     $userOptions = $moderatorOptions = [];
 
@@ -234,7 +234,7 @@ function admin_formcontainer_output_row(array &$formArguments): array
     if ($mybb->get_input(
             'module'
         ) == 'forum-management' && !empty($lang->forum) && $formArguments['title'] === $lang->forum) {
-        loadLanguage();
+        languageLoad();
 
         foreach (FIELDS_DATA['moderators'] as $fieldName => $fieldDefinition) {
             if ($fieldName === 'technicalthreads') {
@@ -253,29 +253,25 @@ function admin_formcontainer_output_row(array &$formArguments): array
     if ($mybb->get_input(
             'module'
         ) == 'forum-management' && !empty($lang->misc_options) && $formArguments['title'] === $lang->misc_options) {
-        loadLanguage();
+        languageLoad();
 
         foreach (FIELDS_DATA['forums'] as $fieldName => $fieldDefinition) {
             if ($fieldName === 'technicalthreads') {
                 continue;
             }
 
-            switch ($fieldDefinition['formType'] ?? '') {
-                case 'textarea':
-                    $mySupportOptions[] = $lang->{'mysupport_forums_' . $fieldName} . '<br />' . $form->generate_text_area(
-                            $fieldName,
-                            $forum_data[$fieldName]
-                        );
-
-                    break;
-                default:
-                    $mySupportOptions[] = $form->generate_check_box(
+            $mySupportOptions[] = match ($fieldDefinition['formType'] ?? '') {
+                'textarea' => $lang->{'mysupport_forums_' . $fieldName} . '<br />' . $form->generate_text_area(
                         $fieldName,
-                        1,
-                        $lang->{'mysupport_forums_' . $fieldName},
-                        ['id' => $fieldName, 'checked' => $forum_data[$fieldName]]
-                    );
-            }
+                        $forum_data[$fieldName]
+                    ),
+                default => $form->generate_check_box(
+                    $fieldName,
+                    1,
+                    $lang->{'mysupport_forums_' . $fieldName},
+                    ['id' => $fieldName, 'checked' => $forum_data[$fieldName]]
+                ),
+            };
         }
     }
 
@@ -302,14 +298,10 @@ function admin_forum_management_edit_commit(): void
 
     foreach (FIELDS_DATA['forums'] as $fieldName => $fieldDefinition) {
         if (isset($mybb->input[$fieldName])) {
-            switch ($fieldDefinition['type']) {
-                case 'TEXT':
-                    $updateData[$fieldName] = $db->escape_string($mybb->get_input($fieldName));
-
-                    break;
-                default:
-                    $updateData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
-            }
+            $updateData[$fieldName] = match ($fieldDefinition['type']) {
+                'TEXT' => $db->escape_string($mybb->get_input($fieldName)),
+                default => $mybb->get_input($fieldName, MyBB::INPUT_INT),
+            };
         }
     }
 

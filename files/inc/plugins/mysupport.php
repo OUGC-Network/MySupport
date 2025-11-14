@@ -35,9 +35,12 @@ if (!defined('IN_MYBB')) {
     die('This file cannot be accessed directly.');
 }
 
+define('MySupport\Core\DEBUG', true);
+
 define('MySupport\Core\ROOT', MYBB_ROOT . 'inc/plugins/mysupport');
 
 require_once ROOT . '/core.php';
+require_once ROOT . '/url.php';
 
 defined('PLUGINLIBRARY') or define('PLUGINLIBRARY', MYBB_ROOT . 'inc/plugins/pluginlibrary.php');
 

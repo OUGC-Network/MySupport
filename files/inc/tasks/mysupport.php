@@ -17,20 +17,23 @@
 
 declare(strict_types=1);
 
-use function MySupport\Core\_change_status;
+use function MySupport\Core\threadStatusUpdate;
 use function MySupport\Core\backupDelete;
+use function MySupport\Core\backupInsert;
 use function MySupport\Core\enabledForums;
 use function MySupport\Core\backupGet;
+use function MySupport\Core\languageLoad;
 use function MySupport\Core\priorityInsert;
 use function MySupport\Core\threadsGet;
 
 use const MySupport\Admin\FIELDS_DATA;
+use const MySupport\Core\DATABASE_ROW_TYPE_BACKUP;
 
 function task_mysupport(array $task): array
 {
     global $mybb, $db, $lang;
 
-    $lang->load('mysupport');
+    languageLoad();
 
     $task_log = $lang->task_mysupport_ran;
 
@@ -63,7 +66,7 @@ function task_mysupport(array $task): array
 
             // if there are any threads to mark as solved
             if (!empty($tids)) {
-                _change_status($tids, 1, true);
+                threadStatusUpdate($tids, 1, true);
 
                 $threads_solved = true;
             }
@@ -162,12 +165,12 @@ function task_mysupport(array $task): array
                 fclose($f);
 
                 $insert = [
-                    'type' => 'backup',
+                    'type' => DATABASE_ROW_TYPE_BACKUP,
                     'name' => $db->escape_string($name),
                     'extra' => TIME_NOW
                 ];
 
-                priorityInsert($insert);
+                backupInsert($insert);
 
                 // get the latest 3 backups
                 $backups = [0];

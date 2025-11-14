@@ -6,9 +6,9 @@
  * https://matt.rogow.ski/
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * You may get a copy of the License at
  ** http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
+ * Unless required by applicable law or agreed to in writing; software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
@@ -21,11 +21,15 @@ namespace MySupport\Admin;
 
 use DirectoryIterator;
 
+use function MySupport\Core\backupUpdate;
+use function MySupport\Core\deniedReasonUpdate;
 use function MySupport\Core\priorityGet;
+use function MySupport\Core\deniedReasonGet;
+use function MySupport\Core\backupGet;
 use function MySupport\Core\priorityInsert;
 use function MySupport\Core\priorityUpdate;
 use function MySupport\Core\updateCache;
-use function MySupport\Core\loadLanguage;
+use function MySupport\Core\languageLoad;
 use function MySupport\MyAlerts\getAvailableLocations;
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 
@@ -33,6 +37,8 @@ use const MySupport\Core\ROOT;
 use const MySupport\Core\VERSION;
 use const MySupport\Core\VERSION_CODE;
 use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;
+use const MySupport\Core\DATABASE_ROW_TYPE_DENIED_REASON;
+use const MySupport\Core\DATABASE_ROW_TYPE_BACKUP;
 
 const TASK_FILE_DEACTIVATE = 0;
 
@@ -159,7 +165,7 @@ const FIELDS_DATA = [
             'default' => 0,
         ],
         'bestanswer' => [
-            'type' => 'TINYINT',
+            'type' => 'INT',
             'unsigned' => true,
             'default' => 0,
         ],
@@ -307,7 +313,7 @@ function pluginInformation(): array
 {
     global $lang;
 
-    loadLanguage();
+    languageLoad();
 
     $myAlertsDescription = '';
 
@@ -423,181 +429,127 @@ function pluginActivation(): void
     taskInstallation();
 
     change_admin_permission('config', 'mysupport');
+    /*
+        find_replace_templatesets(
+            'postbit',
+            '#' . preg_quote('{$post[\'subject_extra\']}') . '#i',
+            '{$post[\'subject_extra\']}<div class="float_right">{$post[\'mysupport_bestanswer\']}{$post[\'mysupport_deny_support_post\']}</div>'
+        );
 
-    require_once MYBB_ROOT . 'inc/adminfunctions_templates.php';
+        find_replace_templatesets(
+            'postbit_classic',
+            '#' . preg_quote('{$post[\'subject_extra\']}') . '#i',
+            '{$post[\'subject_extra\']}<div class="float_right">{$post[\'mysupport_bestanswer\']}{$post[\'mysupport_deny_support_post\']}</div>'
+        );
 
-    find_replace_templatesets(
-        'showthread',
-        '#' . preg_quote('{$multipage}') . '#i',
-        '{$multipage}{$mysupport_options}'
-    );
+        find_replace_templatesets(
+            'postbit',
+            '#' . preg_quote('{$post[\'icon\']}') . '#i',
+            '{$post[\'mysupport_status\']}{$post[\'icon\']}'
+        );
 
-    find_replace_templatesets(
-        'showthread',
-        '#' . preg_quote('{$footer}') . '#i',
-        '{$mysupport_js}{$footer}'
-    );
+        find_replace_templatesets(
+            'postbit_classic',
+            '#' . preg_quote('{$post[\'icon\']}') . '#i',
+            '{$post[\'mysupport_status\']}{$post[\'icon\']}'
+        );
 
-    find_replace_templatesets(
-        'postbit',
-        '#' . preg_quote('post_content') . '#i',
-        'post_content{$post[\'mysupport_bestanswer_highlight\']}{$post[\'mysupport_staff_highlight\']}'
-    );
+        find_replace_templatesets(
+            'header',
+            '#' . preg_quote('{$unreadreports}') . '#i',
+            '{$unreadreports}{$mysupport_tech_notice}{$mysupport_assign_notice}'
+        );
 
-    find_replace_templatesets(
-        'postbit_classic',
-        '#' . preg_quote('post_content') . '#i',
-        'post_content{$post[\'mysupport_bestanswer_highlight\']}{$post[\'mysupport_staff_highlight\']}'
-    );
+        find_replace_templatesets(
+            'forumdisplay',
+            '#' . preg_quote('{$header}') . '#i',
+            '{$header}{$mysupport_priority_classes}'
+        );
 
-    find_replace_templatesets(
-        'postbit',
-        '#' . preg_quote('{$post[\'subject_extra\']}') . '#i',
-        '{$post[\'subject_extra\']}<div class="float_right">{$post[\'mysupport_bestanswer\']}{$post[\'mysupport_deny_support_post\']}</div>'
-    );
+        find_replace_templatesets(
+            'search_results_threads ',
+            '#' . preg_quote('{$header}') . '#i',
+            '{$header}{$mysupport_priority_classes}'
+        );
 
-    find_replace_templatesets(
-        'postbit_classic',
-        '#' . preg_quote('{$post[\'subject_extra\']}') . '#i',
-        '{$post[\'subject_extra\']}<div class="float_right">{$post[\'mysupport_bestanswer\']}{$post[\'mysupport_deny_support_post\']}</div>'
-    );
+        find_replace_templatesets(
+            'forumdisplay_thread',
+            '#' . preg_quote('{$prefix}') . '#i',
+            '{$mysupport_bestanswer}{$mysupport_assigned}{$prefix}'
+        );
 
-    find_replace_templatesets(
-        'postbit',
-        '#' . preg_quote('{$post[\'icon\']}') . '#i',
-        '{$post[\'mysupport_status\']}{$post[\'icon\']}'
-    );
+        find_replace_templatesets(
+            'search_results_threads_thread ',
+            '#' . preg_quote('{$prefix}') . '#i',
+            '{$mysupport_bestanswer}{$mysupport_assigned}{$prefix}'
+        );
 
-    find_replace_templatesets(
-        'postbit_classic',
-        '#' . preg_quote('{$post[\'icon\']}') . '#i',
-        '{$post[\'mysupport_status\']}{$post[\'icon\']}'
-    );
+        find_replace_templatesets(
+            'search_results_threads_thread',
+            '#' . preg_quote('{$bgcolor}') . '#i',
+            '{$bgcolor}{$priority_class}'
+        );
 
-    find_replace_templatesets(
-        'showthread',
-        '#' . preg_quote('{$thread[\'threadprefix\']}') . '#i',
-        '{$mysupport_status}{$thread[\'threadprefix\']}'
-    );
+        find_replace_templatesets(
+            'search_results_threads_inlinecheck',
+            '#' . preg_quote('{$bgcolor}') . '#i',
+            '{$bgcolor}{priority_class}'
+        );
 
-    find_replace_templatesets(
-        'header',
-        '#' . preg_quote('{$unreadreports}') . '#i',
-        '{$unreadreports}{$mysupport_tech_notice}{$mysupport_assign_notice}'
-    );
+        find_replace_templatesets(
+            'modcp_nav',
+            '#' . preg_quote('{$modcp_nav_users}') . '#i',
+            '{$modcp_nav_users}<!--mysupport_nav_option-->'
+        );
 
-    find_replace_templatesets(
-        'forumdisplay',
-        '#' . preg_quote('{$header}') . '#i',
-        '{$header}{$mysupport_priority_classes}'
-    );
+        find_replace_templatesets(
+            'usercp_nav_misc',
+            '#' . preg_quote('{$lang->ucp_nav_forum_subscriptions}</a></td></tr>') . '#i',
+            '{$lang->ucp_nav_forum_subscriptions}</a></td></tr><!--mysupport_nav_option-->'
+        );
 
-    find_replace_templatesets(
-        'search_results_threads ',
-        '#' . preg_quote('{$header}') . '#i',
-        '{$header}{$mysupport_priority_classes}'
-    );
+        find_replace_templatesets(
+            'usercp',
+            '#' . preg_quote('{$latest_warnings}') . '#i',
+            '{$latest_warnings}<br />{$threads_list}'
+        );
 
-    find_replace_templatesets(
-        'forumdisplay_thread',
-        '#' . preg_quote('{$prefix}') . '#i',
-        '{$mysupport_status}{$mysupport_bestanswer}{$mysupport_assigned}{$prefix}'
-    );
+        find_replace_templatesets(
+            'member_profile',
+            '#' . preg_quote('{$profilefields}') . '#i',
+            '{$profilefields}{$mysupport_info}'
+        );
 
-    find_replace_templatesets(
-        'search_results_threads_thread ',
-        '#' . preg_quote('{$prefix}') . '#i',
-        '{$mysupport_status}{$mysupport_bestanswer}{$mysupport_assigned}{$prefix}'
-    );
+        find_replace_templatesets(
+            'newreply',
+            '#' . preg_quote('{$message}</textarea>') . '#i',
+            '{$mysupport_solved_bump_message}{$message}</textarea>'
+        );
 
-    find_replace_templatesets(
-        'forumdisplay_thread',
-        '#' . preg_quote('{$bgcolor}') . '#i',
-        '{$bgcolor}{$priority_class}'
-    );
+        find_replace_templatesets(
+            'showthread_quickreply',
+            '#' . preg_quote('</textarea>') . '#i',
+            '{$mysupport_solved_bump_message}</textarea>'
+        );
 
-    find_replace_templatesets(
-        'forumdisplay_thread_rating',
-        '#' . preg_quote('{$bgcolor}') . '#i',
-        '{$bgcolor}{$priority_class}'
-    );
-
-    find_replace_templatesets(
-        'forumdisplay_thread_modbit',
-        '#' . preg_quote('{$bgcolor}') . '#i',
-        '{$bgcolor}{$priority_class}'
-    );
-
-    find_replace_templatesets(
-        'search_results_threads_thread',
-        '#' . preg_quote('{$bgcolor}') . '#i',
-        '{$bgcolor}{$priority_class}'
-    );
-
-    find_replace_templatesets(
-        'search_results_threads_inlinecheck',
-        '#' . preg_quote('{$bgcolor}') . '#i',
-        '{$bgcolor}{priority_class}'
-    );
-
-    find_replace_templatesets(
-        'forumdisplay_inlinemoderation',
-        '#' . preg_quote('{$customthreadtools}') . '#i',
-        '{$customthreadtools}{$mysupport_inline_thread_moderation}'
-    );
-
-    find_replace_templatesets(
-        'search_results_threads_inlinemoderation',
-        '#' . preg_quote('{$customthreadtools}') . '#i',
-        '{$customthreadtools}{$mysupport_inline_thread_moderation}'
-    );
-
-    find_replace_templatesets(
-        'modcp_nav',
-        '#' . preg_quote('{$modcp_nav_users}') . '#i',
-        '{$modcp_nav_users}<!--mysupport_nav_option-->'
-    );
-
-    find_replace_templatesets(
-        'usercp_nav_misc',
-        '#' . preg_quote('{$lang->ucp_nav_forum_subscriptions}</a></td></tr>') . '#i',
-        '{$lang->ucp_nav_forum_subscriptions}</a></td></tr><!--mysupport_nav_option-->'
-    );
-
-    find_replace_templatesets(
-        'usercp',
-        '#' . preg_quote('{$latest_warnings}') . '#i',
-        '{$latest_warnings}<br />{$threads_list}'
-    );
-
-    find_replace_templatesets(
-        'member_profile',
-        '#' . preg_quote('{$profilefields}') . '#i',
-        '{$profilefields}{$mysupport_info}'
-    );
-
-    find_replace_templatesets(
-        'newreply',
-        '#' . preg_quote('{$message}</textarea>') . '#i',
-        '{$mysupport_solved_bump_message}{$message}</textarea>'
-    );
-
-    find_replace_templatesets(
-        'showthread_quickreply',
-        '#' . preg_quote('</textarea>') . '#i',
-        '{$mysupport_solved_bump_message}</textarea>'
-    );
-
-    find_replace_templatesets(
-        'newthread',
-        '#' . preg_quote('{$multiquote_external}') . '#i',
-        '{$multiquote_external}{$mysupport_thread_options}'
-    );
-
+        find_replace_templatesets(
+            'newthread',
+            '#' . preg_quote('{$multiquote_external}') . '#i',
+            '{$multiquote_external}{$mysupport_thread_options}'
+        );
+    */
     /*~*~* RUN UPDATES START *~*~*/
 
-    foreach (priorityGet() as $priorityData) {
+    foreach (priorityGet(["type='priority'"]) as $priorityData) {
         priorityUpdate(['type' => DATABASE_ROW_TYPE_PRIORITY], (int)$priorityData['mid']);
+    }
+
+    foreach (deniedReasonGet(["type='deniedreason'"]) as $deniedReasonData) {
+        deniedReasonUpdate(['type' => DATABASE_ROW_TYPE_DENIED_REASON], (int)$deniedReasonData['mid']);
+    }
+
+    foreach (backupGet(["type='backup'"]) as $backupData) {
+        backupUpdate(['type' => DATABASE_ROW_TYPE_BACKUP], (int)$backupData['mid']);
     }
 
     /*~*~* RUN UPDATES END *~*~*/
@@ -629,14 +581,28 @@ function pluginDeactivation(): void
 
     find_replace_templatesets(
         'postbit',
-        '#' . preg_quote('{$post[\'mysupport_bestanswer_highlight\']}{$post[\'mysupport_staff_highlight\']}') . '#i',
+        '#' . preg_quote('{$post[\'mysupport_staff_highlight\']}') . '#i',
+        '',
+        0
+    );
+
+    find_replace_templatesets(
+        'postbit',
+        '#' . preg_quote('{$post[\'mysupport_staff_highlight\']}') . '#i',
         '',
         0
     );
 
     find_replace_templatesets(
         'postbit_classic',
-        '#' . preg_quote('{$post[\'mysupport_bestanswer_highlight\']}{$post[\'mysupport_staff_highlight\']}') . '#i',
+        '#' . preg_quote('{$post[\'mysupport_bestanswer_highlight\']}') . '#i',
+        '',
+        0
+    );
+
+    find_replace_templatesets(
+        'postbit_classic',
+        '#' . preg_quote('{$post[\'mysupport_staff_highlight\']}') . '#i',
         '',
         0
     );
@@ -703,14 +669,28 @@ function pluginDeactivation(): void
 
     find_replace_templatesets(
         'forumdisplay_thread',
-        '#' . preg_quote('{$mysupport_status}{$mysupport_bestanswer}{$mysupport_assigned}') . '#i',
+        '#' . preg_quote('{$mysupport_status}') . '#i',
+        '',
+        0
+    );
+
+    find_replace_templatesets(
+        'forumdisplay_thread',
+        '#' . preg_quote('{$mysupport_bestanswer}{$mysupport_assigned}') . '#i',
         '',
         0
     );
 
     find_replace_templatesets(
         'search_results_threads_thread ',
-        '#' . preg_quote('{$mysupport_status}{$mysupport_bestanswer}{$mysupport_assigned}') . '#i',
+        '#' . preg_quote('{$mysupport_status}') . '#i',
+        '',
+        0
+    );
+
+    find_replace_templatesets(
+        'search_results_threads_thread ',
+        '#' . preg_quote('{$mysupport_bestanswer}{$mysupport_assigned}') . '#i',
         '',
         0
     );
@@ -823,7 +803,7 @@ function loadPluginLibrary(): void
 {
     global $PL, $lang;
 
-    loadLanguage();
+    languageLoad();
 
     if ($fileExists = file_exists(PLUGINLIBRARY)) {
         global $PL;
@@ -853,7 +833,7 @@ function pluginInstallation(): void
 
     loadPluginLibrary();
 
-    loadLanguage();
+    languageLoad();
 
     dbVerifyTables();
 
@@ -877,7 +857,6 @@ function pluginInstallation(): void
 
     foreach ($priorityItems as $priorityItem) {
         priorityInsert([
-            'type' => DATABASE_ROW_TYPE_PRIORITY,
             'name' => $db->escape_string($priorityItem['name']),
             'description' => $db->escape_string($priorityItem['description']),
             'extra' => $db->escape_string($priorityItem['extra']),
@@ -1128,7 +1107,7 @@ function taskInstallation(int $processAction = TASK_FILE_INSTALL): void
 {
     global $db, $lang;
 
-    loadLanguage();
+    languageLoad();
 
     $dbQuery = $db->simple_select('tasks', 'tid', "file='mysupport'", ['limit' => 1]);
 

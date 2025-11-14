@@ -1,0 +1,24 @@
+<form action="{$mybb->settings['bburl']}/moderation.php" method="post" style="display: none;"
+      id="mySupportNotSolvedForm_{$postID}">
+    <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
+    <input type="hidden" name="tid" value="{$threadID}"/>
+    <input type="hidden" name="pid" value="{$postID}"/>
+    <input type="hidden" name="fid" value="{$forumID}"/>
+    <input type="hidden" name="modtype" value="inlinepost"/>
+    <input type="hidden" name="action" value="mysupport_not_solved"/>
+</form>
+<script type="text/javascript">
+    <!--
+    window.addEventListener("DOMContentLoaded", function () {
+        var form = document.getElementById('mySupportNotSolvedForm_{$postID}');
+
+        document.getElementById('mySupportnotSolvedButton_{$postID}').addEventListener('click', function () {
+            form.submit();
+        });
+    });
+    // -->
+</script>
+<a href="javascript: void(0);" title="{$lang->mySupportPostBitButtonNotSolvedDescription}"
+   id="mySupportnotSolvedButton_{$postID}">
+    <span style="padding-left: 0; background: none;">{$lang->mySupportPostBitButtonNotSolved}</span>
+</a>

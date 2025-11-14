@@ -6,9 +6,9 @@
  * https://matt.rogow.ski/
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * You may get a copy of the License at
  ** http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
+ * Unless required by applicable law or agreed to in writing; software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
@@ -20,19 +20,21 @@ declare(strict_types=1);
 use function MySupport\Core\_get_friendly_status;
 use function MySupport\Core\deniedReasonDelete;
 use function MySupport\Core\deniedReasonGet;
-use function MySupport\Core\loadLanguage;
+use function MySupport\Core\deniedReasonInsert;
+use function MySupport\Core\languageLoad;
 use function MySupport\Core\priorityDelete;
 use function MySupport\Core\priorityGet;
 use function MySupport\Core\priorityInsert;
 use function MySupport\Core\priorityUpdate;
 use function MySupport\Core\threadsGet;
-use function MySupport\Core\threadsUpdate;
+use function MySupport\Core\threadUpdate;
 use function MySupport\Core\updateCache;
 use function MySupport\Core\usersGet;
-use function MySupport\Core\usersUpdate;
+use function MySupport\Core\userUpdate;
 
 use const MySupport\Core\CACHE_TYPE_DENIED_REASONS;
 use const MySupport\Core\CACHE_TYPE_PRIORITIES;
+use const MySupport\Core\DATABASE_ROW_TYPE_DENIED_REASON;
 use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;
 
 if (!defined('IN_MYBB')) {
@@ -49,7 +51,7 @@ $run_module = $run_module_backup;
 
 $action_file = $action_file_backup;
 
-loadLanguage();
+languageLoad();
 
 $page->add_breadcrumb_item($lang->mysupport, 'index.php?module=config-mysupport');
 
@@ -129,7 +131,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             ];
 
             foreach (threadsGet(["priority='{$pid}'"], ['tid']) as $threadID => $threadData) {
-                threadsUpdate($update, $threadID);
+                threadUpdate($update, $threadID);
             }
 
             priorityDelete($pid);
@@ -158,10 +160,9 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $insert = [
             'name' => $db->escape_string($mybb->get_input('name')),
             'description' => $db->escape_string($mybb->get_input('description')),
-            'type' => 'deniedreason'
         ];
 
-        priorityInsert($insert);
+        deniedReasonInsert($insert);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
 
@@ -182,7 +183,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             'description' => $db->escape_string($mybb->get_input('description'))
         ];
 
-        priorityUpdate($update, $drid);
+        deniedReasonUpdate($update, $drid);
 
         updateCache(CACHE_TYPE_DENIED_REASONS);
 
@@ -198,7 +199,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             ];
 
             foreach (usersGet(["deniedsupportreason='{$drid}'"], ['uid']) as $userID => $userData) {
-                usersUpdate($update, $userID);
+                userUpdate($update, $userID);
             }
 
             deniedReasonDelete($drid);
@@ -343,7 +344,11 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $table = new Table();
 
         $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
-        $priority = priorityGet(["mid='{$pid}'"], queryOptions: ['limit' => 1]);
+        $priority = priorityGet(
+            ["mid='{$pid}'"],
+            ['name', 'description', 'extra', 'allowed_groups', 'allowed_forums'],
+            ['limit' => 1]
+        );
 
         if (!$priority) {
             flash_message($lang->priority_invalid, 'error');
@@ -482,7 +487,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         $table = new Table();
 
-        $priorityObjects = priorityGet(queryFields: ['name', 'description', 'extra']);
+        $priorityObjects = priorityGet(queryFields: ['name', 'description', 'extra', 'type']);
 
         if ($priorityObjects) {
             $table->construct_header($lang->mysupport_name);
