@@ -29,20 +29,24 @@
     background: #D6ECA6 !important;
 }
 
+.mySupportBestAnswerButton span {
+    background-image: url('images/mysupport_bestanswer.png') !important;
+}
+
 .mySupportStaffHighlight {
     background: #E6E8FA !important;
 }
 
 .usercp_nav_support_threads {
-    background: url(images/usercp/mysupport_support.png) no-repeat left center;
+    background: url(images/mysupport_support.png) no-repeat left center;
 }
 
 .usercp_nav_assigned_threads {
-    background: url(images/usercp/mysupport_assigned.png) no-repeat left center;
+    background: url(images/mysupport_assigned.png) no-repeat left center;
 }
 
 .modcp_nav_tech_threads {
-    background: url(images/modcp/mysupport_technical.png) no-repeat left center;
+    background: url(images/mysupport_technical.png) no-repeat left center;
 }
 
 .modcp_nav_deny_support {

@@ -35,6 +35,10 @@ if (!defined('IN_MYBB')) {
     die('This file cannot be accessed directly.');
 }
 
+// You can uncomment the lines below to avoid storing some settings in the DB
+define('MySupport\Core\SETTINGS', [
+]);
+
 define('MySupport\Core\DEBUG', true);
 
 define('MySupport\Core\ROOT', MYBB_ROOT . 'inc/plugins/mysupport');

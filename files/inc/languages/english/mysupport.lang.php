@@ -48,6 +48,16 @@ $l = [
     'mySupportModerationThreadNotTechnical' => 'The thread has been marked as not technical.<br /><br />You will now be redirected to the previous page.',
     'mySupportModerationThreadOnhold' => 'The thread has been marked as onhold.<br /><br />You will now be redirected to the previous page.',
     'mySupportModerationThreadNotOnhold' => 'The thread has been marked as onhold.<br /><br />You will now be redirected to the previous page.',
+
+    'mySupportStatusTextSolved' => 'Solved',
+    'mySupportStatusTextNotSolved' => 'Not Solved',
+    'mySupportStatusTextTechnical' => 'Technical',
+    'mySupportStatusTextNotTechnical' => 'Not Technical',
+
+    'mySupportProfileTitle' => 'Support Details',
+
+    'mySupportDisplayStatusSolved' => 'Solved',
+    'mySupportDisplayStatusNotSolved' => 'Not Solved',
 ];
 
 $l['mysupport'] = 'MySupport';
@@ -94,9 +104,9 @@ $l['technical_global'] = '{1} technical {2} requiring attention.';
 $l['technical_forum'] = '{1} technical {2} requiring attention in this forum.';
 $l['technical_global_forum'] = '{1} technical {2} requiring attention, with {3} in this forum.';
 
-$l['thread_list_title_solved'] = 'Your Support Threads';
-$l['thread_list_title_tech'] = 'Technical Threads';
-$l['thread_list_title_assign'] = 'Your Assigned Threads';
+$l['mySupportUserPanelNavigationList'] = 'Your Support Threads';
+$l['mySupportModerationPanelNavigationTechnical'] = 'Technical Threads';
+$l['mySupportUserPanelNavigationAssigned'] = 'Your Assigned Threads';
 $l['thread_list_heading_solved'] = 'Your support threads.';
 $l['thread_list_heading_solved_latest'] = 'Your latest support threads.';
 $l['thread_list_heading_solved_new'] = 'Your support threads with activity since your last visist.';
@@ -157,13 +167,13 @@ $l['bestanswer_not_enabled'] = 'You cannot mark this post as the best answer as 
 $l['bestanswer_invalid_forum'] = 'This post is not from a thread within a valid forum.';
 $l['bestanswer_not_author'] = 'You cannot mark this post as the best answer as you did not author the thread.';
 $l['solve_and_highlight'] = 'Post successfully highlighted.<br /><br />Status changed from {1} to {2}.';
-$l['jump_to_bestanswer'] = 'Jump to the post that solved this thread.';
-$l['jump_to_bestanswer_tab'] = 'Jump to Best Answer';
-$l['best_answers_given'] = 'Best Answers Given:';
+$l['mySupportJumpToBestAnswer'] = 'Jump to Best Answer';
+$l['mySupportJumpToBestAnswerDescription'] = 'Jump to the post that solved this thread.';
+$l['mySupportProfileBestAnswersCount'] = 'Best Answers Given:';
 
 $l['mySupportInlineModeration'] = 'Support Moderation';
-$l['assigned'] = 'Assigned';
-$l['assigned_toyou'] = 'Assigned to you';
+$l['mySupportForumDisplayAssigned'] = 'Assigned';
+$l['mySupportForumDisplayAssignedToYou'] = 'Assigned to you';
 $l['mySupportInlineModerationAssignGroup'] = 'Assign to:';
 $l['mySupportInlineModerationAssignNobody'] = 'Nobody';
 $l['assigned_to_success'] = 'Assigned to {1}.';
@@ -213,13 +223,12 @@ $l['issupportthread_0_multi'] = 'Thread marked as not support threads.';
 $l['issupportthread_not_enabled'] = 'Marking threads as support threads/not support threads is not enabled.';
 $l['issupportthread_mark_as_support_thread'] = 'Mark as support thread';
 
-$l['support_denial'] = 'Support Denial';
+$l['mySupportModerationPanelNavigationDenySupport'] = 'Support Denial';
 $l['deny_support'] = 'Deny Support';
 $l['deny_support_to'] = 'Deny support to {1}';
 $l['deny_support_to_user'] = 'Deny support to a user';
 $l['deny_support_desc'] = 'If a user is denied support, they will not be able to create new threads in MySupport forums. A message will appear in all their current posts in MySupport forums to alert other users that the user has been denied support. If you choose a reason for denial below, it will display when a user tries to make a new thread in a MySupport forum.';
 $l['denied_support'] = 'Denied Support';
-$l['denied_support_click_to_edit_revoke'] = '(Click to edit/revoke)';
 $l['deny_support_success'] = 'You have successfully denied support to {1}.';
 $l['deny_support_revoke_success'] = 'You have successfully revoked denial of support from {1}.';
 $l['support_denial_reasons_none'] = 'None';
@@ -240,7 +249,7 @@ $l['support_denial_no_reason'] = 'No reason given.';
 $l['support_denial_no_users'] = 'No users have been denied support.';
 $l['deniedsupport'] = 'You cannot start a new support thread here as you have been denied support on these forums.';
 $l['deniedsupport_reason'] = 'Reason: {1}';
-$l['denied_support_profile'] = 'This user has been denied support on these forums.';
+$l['mySupportProfileDeniedSupportNotice'] = 'This user has been denied support on these forums.';
 
 $l['mysupport_solved_bump_message'] = "This thread has been marked as solved. If you have a similar issue, it would be better to post your own thread rather than bump this one, to help keep everybody's different issues separate.";
 
@@ -254,8 +263,6 @@ $l['mysupport_activated'] = 'MySupport activated successfully, please configure 
 $l['task_mysupport_ran'] = 'The MySupport task successfully ran.';
 $l['task_mysupport_autosolve_count'] = 'Marked {1} thread(s) as solved.';
 $l['task_mysupport_backup_ran'] = 'All MySupport information was backed up.';
-
-$l['mysupport_tab_more'] = 'More...';
 
 $l['mysupport_just_now'] = 'Just Now';
 $l['mysupport_ago'] = 'ago';

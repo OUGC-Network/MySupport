@@ -1,4 +1,4 @@
-<tr class="mysupport_priority_{$priorityClass}">
+<tr class="{$thread['mySupportPriorityClass']}">
     <td class="{$bgcolor}" width="30%">
         <div>
             <span><a href="{$thread['threadlink']}">{$thread['subject']}</a></span>
@@ -14,7 +14,7 @@
     </td>
     <td class="{$bgcolor}" width="25%">{$status_time}</td>
     <td class="{$bgcolor}" width="20%" style="white-space: nowrap; text-align: right;">
-		<span class="lastpost smalltext">{$lastpostdate} {$lastposttime}<br/>
+		<span class="lastpost smalltext">{$lastposttime}<br/>
 		<a href="{$thread['lastpostlink']}">{$lang->thread_list_lastpost}</a>: {$lastposterlink}</span>
     </td>
 </tr>

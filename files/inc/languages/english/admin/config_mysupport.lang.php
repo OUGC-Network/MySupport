@@ -295,5 +295,21 @@ $l = array_merge([
     'mySupportPrioritiesUrgent' => 'Urgent',
     'mySupportPrioritiesUrgentDescription' => 'Urgent priority threads.',
 
+    'mySupportRebuildAssignmentRows' => 'Rebuild MySupport Assign Legacy Data',
+    'mySupportRebuildAssignmentRowsDescription' => 'When this is run, the MySupport assigned threads legacy data will be converted to the new database scheme.',
+    'mySupportRebuildAssignmentRowsSuccess' => 'The assignment legacy data have been rebuilt successfully.',
+
+    'mySupportRebuildAssignmentCounters' => 'Recount MySupport Assign Counters',
+    'mySupportRebuildAssignmentCountersDescription' => 'When this is run, the MySupport assigned threads counters will be recounted.',
+    'mySupportRebuildAssignmentCountersSuccess' => 'The assignment threads count have been recounted successfully.',
+
+    'mySupportRebuildTechnicalRows' => 'Rebuild MySupport Technical Legacy Data',
+    'mySupportRebuildTechnicalRowsDescription' => 'When this is run, the MySupport technical threads legacy data will be converted to the new database scheme.',
+    'mySupportRebuildTechnicalRowsSuccess' => 'The technical legacy data have been rebuilt successfully.',
+
+    'mySupportRebuildTechnicalCounters' => 'Recount MySupport Technical Counters',
+    'mySupportRebuildTechnicalCountersDescription' => 'When this is run, the MySupport technical threads counters will be recounted.',
+    'mySupportRebuildTechnicalCountersSuccess' => 'The technical threads count have been recounted successfully.',
+
     'mysupport_pluginlibrary' => 'This plugin requires <a href="{1}">PluginLibrary</a> version {2} or later to be uploaded to your forum.'
 ], $l);

@@ -19,17 +19,28 @@ declare(strict_types=1);
 
 namespace MySupport\Admin;
 
+use MyBB;
 use DirectoryIterator;
 
+use MySupport\Core\AssignStatus;
+use MySupport\Core\ThreadStatus;
+
+use function MySupport\Core\assignGet;
+use function MySupport\Core\assignInsert;
 use function MySupport\Core\backupUpdate;
 use function MySupport\Core\deniedReasonUpdate;
+use function MySupport\Core\forumsUpdateTechnicalCount;
 use function MySupport\Core\priorityGet;
 use function MySupport\Core\deniedReasonGet;
 use function MySupport\Core\backupGet;
 use function MySupport\Core\priorityInsert;
 use function MySupport\Core\priorityUpdate;
+use function MySupport\Core\threadsGet;
+use function MySupport\Core\threadUpdate;
 use function MySupport\Core\updateCache;
 use function MySupport\Core\languageLoad;
+use function MySupport\Core\usersGet;
+use function MySupport\Core\usersUpdateAssignCount;
 use function MySupport\MyAlerts\getAvailableLocations;
 use function MySupport\MyAlerts\MyAlertsIsIntegrable;
 
@@ -81,7 +92,40 @@ const TABLES_DATA = [
             'null' => true,
         ],
         //'unique_key' => ['uid' => 'uid']
-    ]
+    ],
+    'mysupport_assigned_threads' => [
+        'assign_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'user_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'assigner_user_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'thread_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'status' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1,
+        ],
+    ],
 ];
 
 const FIELDS_DATA = [
@@ -91,7 +135,7 @@ const FIELDS_DATA = [
             'unsigned' => true,
             'default' => 0,
         ],
-        'mysupportmove' => [
+        'mysupportmove' => [ // todo, deprecate (alternative: custom moderation tools)
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 1,
@@ -142,7 +186,6 @@ const FIELDS_DATA = [
             'formType' => 'textarea',
         ],
     ],
-    //mysupportmove should probably be left for moderation tools
     'threads' => [
         'status' => [
             'type' => 'TINYINT',
@@ -156,6 +199,11 @@ const FIELDS_DATA = [
         ],
         'statustime' => [
             'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'mysupport_is_technical' => [
+            'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0,
         ],
@@ -344,7 +392,7 @@ function pluginInformation(): array
 
 function pluginActivation(): void
 {
-    global $PL, $lang, $cache, $db;
+    global $PL, $lang, $mybb;
 
     loadPluginLibrary();
 
@@ -431,111 +479,9 @@ function pluginActivation(): void
     change_admin_permission('config', 'mysupport');
     /*
         find_replace_templatesets(
-            'postbit',
-            '#' . preg_quote('{$post[\'subject_extra\']}') . '#i',
-            '{$post[\'subject_extra\']}<div class="float_right">{$post[\'mysupport_bestanswer\']}{$post[\'mysupport_deny_support_post\']}</div>'
-        );
-
-        find_replace_templatesets(
-            'postbit_classic',
-            '#' . preg_quote('{$post[\'subject_extra\']}') . '#i',
-            '{$post[\'subject_extra\']}<div class="float_right">{$post[\'mysupport_bestanswer\']}{$post[\'mysupport_deny_support_post\']}</div>'
-        );
-
-        find_replace_templatesets(
-            'postbit',
-            '#' . preg_quote('{$post[\'icon\']}') . '#i',
-            '{$post[\'mysupport_status\']}{$post[\'icon\']}'
-        );
-
-        find_replace_templatesets(
-            'postbit_classic',
-            '#' . preg_quote('{$post[\'icon\']}') . '#i',
-            '{$post[\'mysupport_status\']}{$post[\'icon\']}'
-        );
-
-        find_replace_templatesets(
-            'header',
-            '#' . preg_quote('{$unreadreports}') . '#i',
-            '{$unreadreports}{$mysupport_tech_notice}{$mysupport_assign_notice}'
-        );
-
-        find_replace_templatesets(
-            'forumdisplay',
-            '#' . preg_quote('{$header}') . '#i',
-            '{$header}{$mysupport_priority_classes}'
-        );
-
-        find_replace_templatesets(
-            'search_results_threads ',
-            '#' . preg_quote('{$header}') . '#i',
-            '{$header}{$mysupport_priority_classes}'
-        );
-
-        find_replace_templatesets(
-            'forumdisplay_thread',
-            '#' . preg_quote('{$prefix}') . '#i',
-            '{$mysupport_bestanswer}{$mysupport_assigned}{$prefix}'
-        );
-
-        find_replace_templatesets(
-            'search_results_threads_thread ',
-            '#' . preg_quote('{$prefix}') . '#i',
-            '{$mysupport_bestanswer}{$mysupport_assigned}{$prefix}'
-        );
-
-        find_replace_templatesets(
-            'search_results_threads_thread',
-            '#' . preg_quote('{$bgcolor}') . '#i',
-            '{$bgcolor}{$priority_class}'
-        );
-
-        find_replace_templatesets(
-            'search_results_threads_inlinecheck',
-            '#' . preg_quote('{$bgcolor}') . '#i',
-            '{$bgcolor}{priority_class}'
-        );
-
-        find_replace_templatesets(
-            'modcp_nav',
-            '#' . preg_quote('{$modcp_nav_users}') . '#i',
-            '{$modcp_nav_users}<!--mysupport_nav_option-->'
-        );
-
-        find_replace_templatesets(
-            'usercp_nav_misc',
-            '#' . preg_quote('{$lang->ucp_nav_forum_subscriptions}</a></td></tr>') . '#i',
-            '{$lang->ucp_nav_forum_subscriptions}</a></td></tr><!--mysupport_nav_option-->'
-        );
-
-        find_replace_templatesets(
             'usercp',
             '#' . preg_quote('{$latest_warnings}') . '#i',
             '{$latest_warnings}<br />{$threads_list}'
-        );
-
-        find_replace_templatesets(
-            'member_profile',
-            '#' . preg_quote('{$profilefields}') . '#i',
-            '{$profilefields}{$mysupport_info}'
-        );
-
-        find_replace_templatesets(
-            'newreply',
-            '#' . preg_quote('{$message}</textarea>') . '#i',
-            '{$mysupport_solved_bump_message}{$message}</textarea>'
-        );
-
-        find_replace_templatesets(
-            'showthread_quickreply',
-            '#' . preg_quote('</textarea>') . '#i',
-            '{$mysupport_solved_bump_message}</textarea>'
-        );
-
-        find_replace_templatesets(
-            'newthread',
-            '#' . preg_quote('{$multiquote_external}') . '#i',
-            '{$multiquote_external}{$mysupport_thread_options}'
         );
     */
     /*~*~* RUN UPDATES START *~*~*/
@@ -554,9 +500,9 @@ function pluginActivation(): void
 
     /*~*~* RUN UPDATES END *~*~*/
 
-    $cache->update_forums();
+    $mybb->cache->update_forums();
 
-    $cache->update_usergroups();
+    $mybb->cache->update_usergroups();
 
     updateCache();
 }
@@ -648,7 +594,14 @@ function pluginDeactivation(): void
 
     find_replace_templatesets(
         'header',
-        '#' . preg_quote('{$mysupport_tech_notice}{$mysupport_assign_notice}') . '#i',
+        '#' . preg_quote('{$mysupport_tech_notice}') . '#i',
+        '',
+        0
+    );
+
+    find_replace_templatesets(
+        'header',
+        '#' . preg_quote('{$mysupport_assign_notice}') . '#i',
         '',
         0
     );
@@ -676,7 +629,14 @@ function pluginDeactivation(): void
 
     find_replace_templatesets(
         'forumdisplay_thread',
-        '#' . preg_quote('{$mysupport_bestanswer}{$mysupport_assigned}') . '#i',
+        '#' . preg_quote('{$mysupport_bestanswer}') . '#i',
+        '',
+        0
+    );
+
+    find_replace_templatesets(
+        'forumdisplay_thread',
+        '#' . preg_quote('{$mysupport_assigned}') . '#i',
         '',
         0
     );
@@ -690,7 +650,14 @@ function pluginDeactivation(): void
 
     find_replace_templatesets(
         'search_results_threads_thread ',
-        '#' . preg_quote('{$mysupport_bestanswer}{$mysupport_assigned}') . '#i',
+        '#' . preg_quote('{$mysupport_bestanswer}') . '#i',
+        '',
+        0
+    );
+
+    find_replace_templatesets(
+        'search_results_threads_thread ',
+        '#' . preg_quote('{$mysupport_assigned}') . '#i',
         '',
         0
     );
@@ -829,7 +796,7 @@ function loadPluginLibrary(): void
 
 function pluginInstallation(): void
 {
-    global $cache, $db, $lang;
+    global $mybb, $db, $lang;
 
     loadPluginLibrary();
 
@@ -877,7 +844,7 @@ function pluginInstallation(): void
         '\\MySupport\MyAlerts\\isLocationAlertTypePresent'
     );
 
-    $cache->update('mysupport', [
+    $mybb->cache->update('mysupport', [
         'MyAlertLocationsInstalled' => $MyAlertLocationsInstalled,
     ]);
 }
@@ -915,7 +882,7 @@ function pluginIsInstalled(): bool
 
 function pluginUninstallation(): void
 {
-    global $db, $PL, $cache;
+    global $db, $PL, $mybb;
 
     loadPluginLibrary();
 
@@ -940,14 +907,14 @@ function pluginUninstallation(): void
     // Remove administrator permissions
     change_admin_permission('config', 'mysupport', -1);
 
-    $cache->update_forums();
+    $mybb->cache->update_forums();
 
-    $cache->update_usergroups();
+    $mybb->cache->update_usergroups();
 
-    $cache->update_moderators();
+    $mybb->cache->update_moderators();
 
     // Delete a version from the cache
-    $cache->delete('mysupport');
+    $mybb->cache->delete('mysupport');
 }
 
 function dbTables(): array
@@ -986,7 +953,7 @@ function dbVerifyTables(): bool
     foreach (dbTables() as $tableName => $tableColumns) {
         if ($db->table_exists($tableName)) {
             foreach ($tableColumns as $fieldName => $fieldData) {
-                if ($fieldName == 'primary_key' || $fieldName == 'unique_key') {
+                if ($fieldName === 'primary_key' || $fieldName === 'unique_key') {
                     continue;
                 }
 
@@ -1000,9 +967,9 @@ function dbVerifyTables(): bool
             $query_string = "CREATE TABLE IF NOT EXISTS `{$db->table_prefix}{$tableName}` (";
 
             foreach ($tableColumns as $fieldName => $fieldData) {
-                if ($fieldName == 'primary_key') {
+                if ($fieldName === 'primary_key') {
                     $query_string .= "PRIMARY KEY (`{$fieldData}`)";
-                } elseif ($fieldName != 'unique_key') {
+                } elseif ($fieldName !== 'unique_key') {
                     $query_string .= "`{$fieldName}` {$fieldData},";
                 }
             }
@@ -1162,4 +1129,169 @@ function getSettingGroupID(): int
     }
 
     return (int)$db->fetch_field($dbQuery, 'gid');
+}
+
+function recountRebuildAssignmentRows(): void
+{
+    global $db, $mybb, $lang;
+
+    $db->update_query('users', ['assignedthreads' => '']);
+
+    $totalAssignedThreads = threadsGet(
+        ["assign!='0'"],
+        ['COUNT(tid) as total_threads'],
+        ['limit' => 1]
+    )['total_threads'] ?? 0;
+
+    $page = $mybb->get_input('page', MyBB::INPUT_INT);
+
+    $perPage = $mybb->get_input('mysupport_rebuild_assignment_rows', MyBB::INPUT_INT);
+
+    $start = ($page - 1) * $perPage;
+
+    $end = $start + $perPage;
+
+    foreach (
+        threadsGet(
+            ["assign!='0'"],
+            ['tid', 'assign', 'assignuid'],
+            ['order_by' => 'tid', 'order_dir' => 'asc', 'limit_start' => $start, 'limit' => $perPage]
+        ) as $threadID => $threadData
+    ) {
+        if (!assignGet(["thread_id='{$threadID}'", "status='" . AssignStatus::Active . "'"])) {
+            assignInsert([
+                'user_id' => $threadData['assign'],
+                'assigner_user_id' => $threadData['assignuid'],
+                'thread_id' => $threadID,
+            ]);
+        }
+    }
+
+    check_proceed(
+        $totalAssignedThreads,
+        $end,
+        ++$page,
+        $perPage,
+        'mysupport_rebuild_assignment_rows',
+        'do_mysupport_rebuild_assignment_rows',
+        $lang->mySupportRebuildAssignmentRowsSuccess
+    );
+}
+
+function recountRebuildAssignmentCounters(): void
+{
+    global $db, $mybb, $lang;
+
+    $query = $db->simple_select('users', 'COUNT(uid) as total_users');
+
+    $totalUsers = $db->fetch_field($query, 'total_users');
+
+    $page = $mybb->get_input('page', MyBB::INPUT_INT);
+
+    $perPage = $mybb->get_input('mysupport_recount_assignment_counters', MyBB::INPUT_INT);
+
+    $start = ($page - 1) * $perPage;
+
+    $end = $start + $perPage;
+
+    foreach (
+        usersGet(
+            queryFields: ['uid'],
+            queryOptions: ['order_by' => 'uid', 'order_dir' => 'asc', 'limit_start' => $start, 'limit' => $perPage]
+        ) as $userID => $userData
+    ) {
+        usersUpdateAssignCount($userID);
+    }
+
+    check_proceed(
+        $totalUsers,
+        $end,
+        ++$page,
+        $perPage,
+        'mysupport_recount_assignment_counters',
+        'do_mysupport_recount_assignment_counters',
+        $lang->mySupportRebuildAssignmentCountersSuccess
+    );
+}
+
+function recountRebuildTechnicalRows(): void
+{
+    global $mybb, $lang;
+
+    $totalTechnicalThreads = threadsGet(
+        ["status='2'"],
+        ['COUNT(tid) as total_technical_threads'],
+        ['limit' => 1]
+    )['total_technical_threads'] ?? 0;
+
+    $page = $mybb->get_input('page', MyBB::INPUT_INT);
+
+    $perPage = $mybb->get_input('mysupport_rebuild_technical_rows', MyBB::INPUT_INT);
+
+    $start = ($page - 1) * $perPage;
+
+    $end = $start + $perPage;
+
+    foreach (
+        threadsGet(
+            ["status='2'"],
+            ['tid'],
+            ['order_by' => 'tid', 'order_dir' => 'asc', 'limit_start' => $start, 'limit' => $perPage]
+        ) as $threadID => $threadData
+    ) {
+        threadUpdate([
+            'status' => ThreadStatus::NotSolved,
+            'mysupport_is_technical' => ThreadStatus::Technical,
+        ], $threadID);
+    }
+
+    check_proceed(
+        $totalTechnicalThreads,
+        $end,
+        ++$page,
+        $perPage,
+        'mysupport_rebuild_technical_rows',
+        'do_mysupport_rebuild_technical_rows',
+        $lang->mySupportRebuildTechnicalRowsSuccess
+    );
+}
+
+function recountRebuildTechnicalCounters(): void
+{
+    global $db, $mybb, $lang;
+
+    $query = $db->simple_select('forums', 'COUNT(fid) as total_forums');
+
+    $totalForums = $db->fetch_field($query, 'total_forums');
+
+    $page = $mybb->get_input('page', MyBB::INPUT_INT);
+
+    $perPage = $mybb->get_input('mysupport_recount_technical_counters', MyBB::INPUT_INT);
+
+    $start = ($page - 1) * $perPage;
+
+    $end = $start + $perPage;
+
+    $query = $db->simple_select(
+        'forums',
+        'fid',
+        '',
+        ['order_by' => 'fid', 'order_dir' => 'asc', 'limit_start' => $start, 'limit' => $perPage]
+    );
+
+    while ($forumData = $db->fetch_array($query)) {
+        forumsUpdateTechnicalCount((int)$forumData['fid']);
+    }
+
+    $mybb->cache->update_forums();
+
+    check_proceed(
+        $totalForums,
+        $end,
+        ++$page,
+        $perPage,
+        'mysupport_recount_technical_counters',
+        'do_mysupport_recount_technical_counters',
+        $lang->mySupportRebuildTechnicalCountersSuccess
+    );
 }

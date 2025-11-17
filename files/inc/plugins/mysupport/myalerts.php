@@ -39,9 +39,9 @@ function getAvailableLocations(): array
 
 function getInstalledLocations(): array
 {
-    global $cache;
+    global $mybb;
 
-    return $cache->read('mysupport')['MyAlertLocationsInstalled'] ?? [];
+    return $mybb->cache->read('mysupport')['MyAlertLocationsInstalled'] ?? [];
 }
 
 function isLocationAlertTypePresent(string $locationName): bool
@@ -57,14 +57,14 @@ function isLocationAlertTypePresent(string $locationName): bool
 
 function installLocation(string $name): void
 {
-    global $db, $cache;
+    global $mybb;
 
-    $cacheEntry = $cache->read('mysupport');
+    $cacheEntry = $mybb->cache->read('mysupport');
 
     if (!in_array($name, $cacheEntry['MyAlertLocationsInstalled'])) {
         $cacheEntry['MyAlertLocationsInstalled'][] = $name;
 
-        $cache->update('mysupport', $cacheEntry);
+        $mybb->cache->update('mysupport', $cacheEntry);
     }
 
     if (!isLocationAlertTypePresent($name)) {
@@ -80,7 +80,7 @@ function installLocation(string $name): void
 
 function uninstallLocation(string $name): void
 {
-    global $db, $cache;
+    global $mybb;
 
     // remove MyAlerts type
     $alertTypeManager = MybbStuff_MyAlerts_AlertTypeManager::getInstance();
@@ -88,12 +88,12 @@ function uninstallLocation(string $name): void
     $alertTypeManager->deleteByCode('mysupport_' . $name);
 
     // remove datacache value
-    $cacheEntry = $cache->read('mysupport');
+    $cacheEntry = $mybb->cache->read('mysupport');
     $key = array_search($name, $cacheEntry['MyAlertLocationsInstalled']);
 
     if ($key !== false) {
         unset($cacheEntry['MyAlertLocationsInstalled'][$key]);
-        $cache->update('mysupport', $cacheEntry);
+        $mybb->cache->update('mysupport', $cacheEntry);
     }
 }
 
@@ -138,17 +138,17 @@ function registerMyalertsFormatters(): void
 
 function MyAlertsIsIntegrable(): bool
 {
-    global $cache;
+    global $mybb;
 
     static $status;
 
     if (!$status) {
         $status = false;
 
-        $plugins = $cache->read('plugins');
+        $plugins = $mybb->cache->read('plugins');
 
         if (!empty($plugins['active']) && in_array('myalerts', $plugins['active'])) {
-            if ($euantor_plugins = $cache->read('euantor_plugins')) {
+            if ($euantor_plugins = $mybb->cache->read('euantor_plugins')) {
                 if (isset($euantor_plugins['myalerts']['version'])) {
                     $version = explode('.', $euantor_plugins['myalerts']['version']);
 

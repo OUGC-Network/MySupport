@@ -188,5 +188,13 @@
   "bestanswerpoints": {
     "optionscode": "text",
     "value": ""
+  },
+  "author": {
+    "optionscode": "yesno",
+    "value": 1
+  },
+  "bestAnswerAllowFirstPost": {
+    "optionscode": "yesno",
+    "value": 0
   }
 }

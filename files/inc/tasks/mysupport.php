@@ -17,13 +17,15 @@
 
 declare(strict_types=1);
 
-use function MySupport\Core\threadStatusUpdate;
+use MySupport\Core\ThreadStatus;
+
+use function MySupport\Core\settingsGet;
+use function MySupport\Core\threadOpenStatusUpdate;
 use function MySupport\Core\backupDelete;
 use function MySupport\Core\backupInsert;
 use function MySupport\Core\enabledForums;
 use function MySupport\Core\backupGet;
 use function MySupport\Core\languageLoad;
-use function MySupport\Core\priorityInsert;
 use function MySupport\Core\threadsGet;
 
 use const MySupport\Admin\FIELDS_DATA;
@@ -38,9 +40,9 @@ function task_mysupport(array $task): array
     $task_log = $lang->task_mysupport_ran;
 
     // if this is empty or 0, it'll affect all threads
-    if ($mybb->settings['mysupport_taskautosolvetime'] > 0) {
-        $cut = TIME_NOW - intval($mybb->settings['mysupport_taskautosolvetime']);
-        $mysupport_forums = implode("','", array_map('intval', enabledForums()));
+    if (settingsGet('taskautosolvetime') > 0) {
+        $cut = TIME_NOW - settingsGet('taskautosolvetime');
+        $mysupport_forums = implode("','", enabledForums());
 
         $threads_solved = false;
 
@@ -61,12 +63,14 @@ function task_mysupport(array $task): array
             );
 
             foreach ($threadObjects as $thread) {
-                $tids[] = $thread['tid'];
+                $tids[] = (int)$thread['tid'];
             }
 
             // if there are any threads to mark as solved
-            if (!empty($tids)) {
-                threadStatusUpdate($tids, 1, true);
+            if ($tids) {
+                foreach ($tids as $threadID) {
+                    threadOpenStatusUpdate($threadID, ThreadStatus::Solved);
+                }
 
                 $threads_solved = true;
             }
@@ -77,8 +81,8 @@ function task_mysupport(array $task): array
         }
     }
 
-    if ($mybb->settings['mysupport_taskbackup'] > 0) {
-        $timecut = TIME_NOW - $mybb->settings['mysupport_taskbackup'];
+    if (settingsGet('taskbackup') > 0) {
+        $timecut = TIME_NOW - settingsGet('taskbackup');
 
         // no backups have been made within the cut-off time
         if (!backupGet(["extra>'{$timecut}'"])) {
@@ -204,13 +208,13 @@ function task_mysupport(array $task): array
         add_task_log($task, $task_log);
     }
     /*
-    SELECT `t`.`tid`, `t`.`subject`, `t`.`fid`, `f`.`name`, `t`.`status`, `t`.`statusuid`, `u1`.`username` AS `statusuid_username`, `t`.`statustime`, `t`.`bestanswer`, `t`.`assign`, `u2`.`username` AS `assign_username`, `t`.`assignuid`, `u3`.`username` AS `assignuid_username`, `t`.`priority`, `m`.`name` AS `priority_name`, `t`.`prefix`, `tp`.`prefix` AS `prefix_name`
+    SELECT `t`.`tid`, `t`.`subject`, `t`.`fid`, `f`.`name`, `t`.`status`, `t`.`statusuid`, `u1`.`username` AS `statusuid_username`, `t`.`statustime`, `t`.`bestanswer`, `t`.`assign`, `u2`.`username` AS `assign_username`, `t`.`assigner_user_id`, `u3`.`username` AS `assignuid_username`, `t`.`priority`, `m`.`name` AS `priority_name`, `t`.`prefix`, `tp`.`prefix` AS `prefix_name`
     FROM `mybb_threads` `t`
     LEFT JOIN `mybb_forums` `f` ON `t`.`fid` = `f`.`fid`
     LEFT JOIN `mybb_threadprefixes` `tp` ON `t`.`prefix` = `tp`.`pid`
     LEFT JOIN `mybb_users` `u1` ON `t`.`statusuid` = `u1`.`uid`
     LEFT JOIN `mybb_users` `u2` ON `t`.`assign` = `u2`.`uid`
-    LEFT JOIN `mybb_users` `u3` ON `t`.`assignuid` = `u3`.`uid`
+    LEFT JOIN `mybb_users` `u3` ON `t`.`assigner_user_id` = `u3`.`uid`
     LEFT JOIN `mybb_mysupport` `m` ON `t`.`priority` = `m`.`mid`
     WHERE CONCAT(',', f.parentlist, ',') LIKE '%,1,%'
     AND `t`.`closed` NOT LIKE 'moved|%'

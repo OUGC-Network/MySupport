@@ -17,7 +17,7 @@
 
 declare(strict_types=1);
 
-use function MySupport\Core\_get_friendly_status;
+use function MySupport\Core\friendlyOpenStatusGet;
 use function MySupport\Core\deniedReasonDelete;
 use function MySupport\Core\deniedReasonGet;
 use function MySupport\Core\deniedReasonInsert;
@@ -55,13 +55,13 @@ languageLoad();
 
 $page->add_breadcrumb_item($lang->mysupport, 'index.php?module=config-mysupport');
 
-if ($mybb->get_input('action') == 'do_priorities') {
+if ($mybb->get_input('action') === 'do_priorities') {
     if (!verify_post_check($mybb->get_input('my_post_key'))) {
         flash_message($lang->invalid_post_verify_key2, 'error');
         admin_redirect('index.php?module=config-mysupport&action=priorities');
     }
 
-    if ($mybb->get_input('do') == 'do_add') {
+    if ($mybb->get_input('do') === 'do_add') {
         if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->priority_no_name, 'error');
             admin_redirect('index.php?module=config-mysupport&action=priorities');
@@ -91,7 +91,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         flash_message($lang->priority_added, 'success');
         admin_redirect('index.php?module=config-mysupport&action=priorities');
-    } elseif ($mybb->get_input('do') == 'do_edit') {
+    } elseif ($mybb->get_input('do') === 'do_edit') {
         $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
         if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->priority_no_name, 'error');
@@ -121,7 +121,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         flash_message($lang->priority_edited, 'success');
         admin_redirect('index.php?module=config-mysupport&action=priorities');
-    } elseif ($mybb->get_input('do') == 'do_delete') {
+    } elseif ($mybb->get_input('do') === 'do_delete') {
         if (isset($mybb->input['no'])) {
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         } else {
@@ -142,13 +142,13 @@ if ($mybb->get_input('action') == 'do_priorities') {
             admin_redirect('index.php?module=config-mysupport&action=priorities');
         }
     }
-} elseif ($mybb->get_input('action') == 'do_support_denial') {
+} elseif ($mybb->get_input('action') === 'do_support_denial') {
     if (!verify_post_check($mybb->get_input('my_post_key'))) {
         flash_message($lang->invalid_post_verify_key2, 'error');
         admin_redirect('index.php?module=config-mysupport&action=support_denial');
     }
 
-    if ($mybb->get_input('do') == 'do_add') {
+    if ($mybb->get_input('do') === 'do_add') {
         if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->support_denial_reason_no_name, 'error');
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
@@ -168,7 +168,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         flash_message($lang->support_denial_reason_added, 'success');
         admin_redirect('index.php?module=config-mysupport&action=support_denial');
-    } elseif ($mybb->get_input('do') == 'do_edit') {
+    } elseif ($mybb->get_input('do') === 'do_edit') {
         $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
         if (!strlen(trim($mybb->get_input('name')))) {
             flash_message($lang->support_denial_reason_no_name, 'error');
@@ -189,7 +189,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         flash_message($lang->support_denial_reason_edited, 'success');
         admin_redirect('index.php?module=config-mysupport&action=support_denial');
-    } elseif ($mybb->get_input('do') == 'do_delete') {
+    } elseif ($mybb->get_input('do') === 'do_delete') {
         if (isset($mybb->input['no'])) {
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         } else {
@@ -210,10 +210,10 @@ if ($mybb->get_input('action') == 'do_priorities') {
             admin_redirect('index.php?module=config-mysupport&action=support_denial');
         }
     }
-} elseif ($mybb->get_input('action') == 'support_denial') {
+} elseif ($mybb->get_input('action') === 'support_denial') {
     $page->add_breadcrumb_item($lang->support_denial, 'index.php?module=config-mysupport&amp;action=support_denial');
 
-    if ($mybb->get_input('do') == 'edit') {
+    if ($mybb->get_input('do') === 'edit') {
         $page->output_header($lang->mysupport);
 
         generate_mysupport_tabs('support_denial');
@@ -256,7 +256,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $buttons[] = $form->generate_submit_button($lang->mysupport_edit_support_denial_reason_submit);
         $form->output_submit_wrapper($buttons);
         $form->end();
-    } elseif ($mybb->get_input('do') == 'delete') {
+    } elseif ($mybb->get_input('do') === 'delete') {
         $drid = $mybb->get_input('drid', MyBB::INPUT_INT);
 
         if (!deniedReasonGet(["mid='{$drid}'"], queryOptions: ['limit' => 1])) {
@@ -286,7 +286,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
 
         $table = new Table();
 
-        $deniedReasonObjects = deniedReasonGet(queryFields: ['name', 'description'], queryOptions: ['limit' => 1]);
+        $deniedReasonObjects = deniedReasonGet(queryFields: ['name', 'description']);
 
         if ($deniedReasonObjects) {
             $table->construct_header($lang->mysupport_name);
@@ -336,7 +336,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
 } else {
     $page->add_breadcrumb_item($lang->priorities, 'index.php?module=config-mysupport&amp;action=priorities');
 
-    if ($mybb->get_input('do') == 'edit') {
+    if ($mybb->get_input('do') === 'edit') {
         $page->output_header($lang->mysupport);
 
         generate_mysupport_tabs('priorities');
@@ -394,7 +394,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
         $buttons[] = $form->generate_submit_button($lang->mysupport_edit_priority_submit);
         $form->output_submit_wrapper($buttons);
         $form->end();
-    } elseif ($mybb->get_input('do') == 'delete') {
+    } elseif ($mybb->get_input('do') === 'delete') {
         $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
 
         if (!priorityGet(["mid='{$pid}'"], queryOptions: ['limit' => 1])) {
@@ -422,7 +422,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
             "index.php?module=config-mysupport&amp;action=do_priorities&amp;do=do_delete&amp;pid={$pid}",
             $lang->priority_delete_confirm . $priority_delete_confirm_count
         );
-    } elseif ($mybb->get_input('do') == 'viewthreads') {
+    } elseif ($mybb->get_input('do') === 'viewthreads') {
         $page->output_header($lang->mysupport);
 
         generate_mysupport_tabs('priorities');
@@ -466,7 +466,7 @@ if ($mybb->get_input('action') == 'do_priorities') {
                 );
                 $table->construct_cell($profile_link, ['class' => 'align_center', 'width' => '20%']);
                 $table->construct_cell(
-                    _get_friendly_status((int)$thread['status']),
+                    friendlyOpenStatusGet((int)$thread['status']),
                     ['class' => 'align_center', 'width' => '20%']
                 );
                 $table->construct_row();

@@ -22,6 +22,10 @@ namespace MySupport\AdminHooks;
 use Form;
 use MyBB;
 
+use function MySupport\Admin\recountRebuildAssignmentCounters;
+use function MySupport\Admin\recountRebuildAssignmentRows;
+use function MySupport\Admin\recountRebuildTechnicalCounters;
+use function MySupport\Admin\recountRebuildTechnicalRows;
 use function MySupport\Core\languageLoad;
 use function MySupport\Admin\getSettingGroupID;
 use function MySupport\MyAlerts\getAvailableLocations;
@@ -180,7 +184,7 @@ function admin_formcontainer_end(array &$formArguments): array
     foreach (FIELDS_DATA['usergroups'] as $fieldName => $fieldDefinition) {
         $userPermissions = 'userOptions';
 
-        if ($fieldName == 'canmanagesupportdenial') {
+        if ($fieldName === 'canmanagesupportdenial') {
             $userPermissions = 'moderatorOptions';
         }
 
@@ -233,7 +237,7 @@ function admin_formcontainer_output_row(array &$formArguments): array
 
     if ($mybb->get_input(
             'module'
-        ) == 'forum-management' && !empty($lang->forum) && $formArguments['title'] === $lang->forum) {
+        ) === 'forum-management' && !empty($lang->forum) && $formArguments['title'] === $lang->forum) {
         languageLoad();
 
         foreach (FIELDS_DATA['moderators'] as $fieldName => $fieldDefinition) {
@@ -252,7 +256,7 @@ function admin_formcontainer_output_row(array &$formArguments): array
 
     if ($mybb->get_input(
             'module'
-        ) == 'forum-management' && !empty($lang->misc_options) && $formArguments['title'] === $lang->misc_options) {
+        ) === 'forum-management' && !empty($lang->misc_options) && $formArguments['title'] === $lang->misc_options) {
         languageLoad();
 
         foreach (FIELDS_DATA['forums'] as $fieldName => $fieldDefinition) {
@@ -319,5 +323,146 @@ function admin_forum_management_editmod_commit(): void
         if (isset($mybb->input[$fieldName])) {
             $update_array[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
         }
+    }
+}
+
+function admin_tools_recount_rebuild_output_list(): void
+{
+    global $lang;
+    global $form_container, $form;
+
+    languageLoad();
+
+    $form_container->output_cell(
+        "<label>{$lang->mySupportRebuildAssignmentRows}</label><div class=\"description\">{$lang->mySupportRebuildAssignmentRowsDescription}</div>"
+    );
+
+    $form_container->output_cell(
+        $form->generate_numeric_field(
+            'mysupport_rebuild_assignment_rows',
+            50,
+            ['style' => 'width: 150px;', 'min' => 0]
+        )
+    );
+
+    $form_container->output_cell(
+        $form->generate_submit_button($lang->go, ['name' => 'do_mysupport_rebuild_assignment_rows'])
+    );
+
+    $form_container->construct_row();
+
+    $form_container->output_cell(
+        "<label>{$lang->mySupportRebuildAssignmentCounters}</label><div class=\"description\">{$lang->mySupportRebuildAssignmentCountersDescription}</div>"
+    );
+
+    $form_container->output_cell(
+        $form->generate_numeric_field(
+            'mysupport_recount_assignment_counters',
+            50,
+            ['style' => 'width: 150px;', 'min' => 0]
+        )
+    );
+
+    $form_container->output_cell(
+        $form->generate_submit_button($lang->go, ['name' => 'do_mysupport_recount_assignment_counters'])
+    );
+
+    $form_container->construct_row();
+
+    $form_container->output_cell(
+        "<label>{$lang->mySupportRebuildTechnicalRows}</label><div class=\"description\">{$lang->mySupportRebuildTechnicalRowsDescription}</div>"
+    );
+
+    $form_container->output_cell(
+        $form->generate_numeric_field(
+            'mysupport_rebuild_technical_rows',
+            50,
+            ['style' => 'width: 150px;', 'min' => 0]
+        )
+    );
+
+    $form_container->output_cell(
+        $form->generate_submit_button($lang->go, ['name' => 'do_mysupport_rebuild_technical_rows'])
+    );
+
+    $form_container->construct_row();
+
+    $form_container->output_cell(
+        "<label>{$lang->mySupportRebuildTechnicalCounters}</label><div class=\"description\">{$lang->mySupportRebuildTechnicalCountersDescription}</div>"
+    );
+
+    $form_container->output_cell(
+        $form->generate_numeric_field(
+            'mysupport_recount_technical_counters',
+            50,
+            ['style' => 'width: 150px;', 'min' => 0]
+        )
+    );
+
+    $form_container->output_cell(
+        $form->generate_submit_button($lang->go, ['name' => 'do_mysupport_recount_technical_counters'])
+    );
+
+    $form_container->construct_row();
+}
+
+function admin_tools_do_recount_rebuild(): void
+{
+    global $mybb;
+
+    if (isset($mybb->input['do_mysupport_rebuild_assignment_rows'])) {
+        if ($mybb->get_input('page', MyBB::INPUT_INT) === 1) {
+            log_admin_action('rebuild_assignments');
+        }
+
+        $perPage = $mybb->get_input('mysupport_rebuild_assignment_rows', MyBB::INPUT_INT);
+
+        if (!$perPage || $perPage <= 0) {
+            $mybb->input['mysupport_rebuild_assignment_rows'] = 50;
+        }
+
+        recountRebuildAssignmentRows();
+    }
+
+    if (isset($mybb->input['do_mysupport_recount_assignment_counters'])) {
+        if ($mybb->get_input('page', MyBB::INPUT_INT) === 1) {
+            log_admin_action('recount_assignments');
+        }
+
+        $perPage = $mybb->get_input('mysupport_recount_assignment_counters', MyBB::INPUT_INT);
+
+        if (!$perPage || $perPage <= 0) {
+            $mybb->input['mysupport_recount_assignment_counters'] = 50;
+        }
+
+        recountRebuildAssignmentCounters();
+    }
+
+    if (isset($mybb->input['do_mysupport_rebuild_technical_rows'])) {
+        if ($mybb->get_input('page', MyBB::INPUT_INT) === 1) {
+            log_admin_action('rebuild_assignments');
+        }
+
+        $perPage = $mybb->get_input('mysupport_rebuild_technical_rows', MyBB::INPUT_INT);
+
+        if (!$perPage || $perPage <= 0) {
+            $mybb->input['mysupport_rebuild_technical_rows'] = 50;
+        }
+
+        recountRebuildTechnicalRows();
+    }
+
+    if (isset($mybb->input['do_mysupport_recount_technical_counters'])) {
+        if ($mybb->get_input('page', MyBB::INPUT_INT) === 1) {
+            log_admin_action('recount_assignments');
+        }
+
+        $perPage = $mybb->get_input('mysupport_recount_technical_counters', MyBB::INPUT_INT);
+
+        if (!$perPage || $perPage <= 0) {
+            $mybb->input['mysupport_recount_technical_counters'] = 50;
+        }
+
+        recountRebuildTechnicalCounters();
     }
 }
