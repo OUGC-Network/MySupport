@@ -83,15 +83,41 @@ const TABLES_DATA = [
             'size' => 255,
             'default' => ''
         ],
+        'allowed_forums' => [
+            'type' => 'TEXT',
+            'null' => true,
+        ],
         'allowed_groups' => [
             'type' => 'TEXT',
             'null' => true,
+        ],
+        //'unique_key' => ['uid' => 'uid']
+    ],
+    'mysupport_categories' => [
+        'category_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => '',
+        ],
+        'display_style' => [
+            'type' => 'VARCHAR',
+            'size' => 200,
+            'default' => '',
         ],
         'allowed_forums' => [
             'type' => 'TEXT',
             'null' => true,
         ],
-        //'unique_key' => ['uid' => 'uid']
+        'allowed_groups' => [
+            'type' => 'TEXT',
+            'null' => true,
+        ],
     ],
     'mysupport_assigned_threads' => [
         'assign_id' => [
@@ -135,7 +161,7 @@ const FIELDS_DATA = [
             'unsigned' => true,
             'default' => 0,
         ],
-        'mysupportmove' => [ // todo, deprecate (alternative: custom moderation tools)
+        'mysupportmove' => [ // todo, drop
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 1,
@@ -241,6 +267,16 @@ const FIELDS_DATA = [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 1,
+        ],
+        'mysupport_category_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'mysupport_issue_url' => [
+            'type' => 'VARCHAR',
+            'size' => 500,
+            'default' => '',
         ],
     ],
     'users' => [
@@ -806,28 +842,30 @@ function pluginInstallation(): void
 
     dbVerifyColumns();
 
-    $prioritiesContents = file_get_contents(ROOT . '/priorities.json');
+    if (!priorityGet()) {
+        $prioritiesContents = file_get_contents(ROOT . '/priorities.json');
 
-    $prioritiesData = json_decode($prioritiesContents, true);
+        $prioritiesData = json_decode($prioritiesContents, true);
 
-    $priorityItems = [];
+        $priorityItems = [];
 
-    foreach ($prioritiesData as $priorityKey => &$priorityData) {
-        if (isset($lang->{"mySupportPriorities{$priorityKey}"})) {
-            $priorityItems[] = [
-                'name' => $lang->{"mySupportPriorities{$priorityKey}"},
-                'description' => $lang->{"mySupportPriorities{$priorityKey}Description"},
-                'extra' => $priorityData['extra'],
-            ];
+        foreach ($prioritiesData as $priorityKey => &$priorityData) {
+            if (isset($lang->{"mySupportPriorities{$priorityKey}"})) {
+                $priorityItems[] = [
+                    'name' => $lang->{"mySupportPriorities{$priorityKey}"},
+                    'description' => $lang->{"mySupportPriorities{$priorityKey}Description"},
+                    'extra' => $priorityData['extra'],
+                ];
+            }
         }
-    }
 
-    foreach ($priorityItems as $priorityItem) {
-        priorityInsert([
-            'name' => $db->escape_string($priorityItem['name']),
-            'description' => $db->escape_string($priorityItem['description']),
-            'extra' => $db->escape_string($priorityItem['extra']),
-        ]);
+        foreach ($priorityItems as $priorityItem) {
+            priorityInsert([
+                'name' => $db->escape_string($priorityItem['name']),
+                'description' => $db->escape_string($priorityItem['description']),
+                'extra' => $db->escape_string($priorityItem['extra']),
+            ]);
+        }
     }
 
     // set some values for the staff groups
@@ -866,7 +904,11 @@ function pluginIsInstalled(): bool
             }
 
             foreach ($tableColumns as $fieldName => $fieldDefinition) {
-                $isInstalledEach = $db->field_exists($fieldName, $tableName) && $isInstalledEach;
+                if ($fieldName === 'primary_key' || $fieldName === 'unique_key' || $fieldName === 'index_keys') {
+                    continue;
+                }
+
+                $isInstalledEach = $db->field_exists($fieldName, $tableName);
 
                 if (!$isInstalledEach) {
                     break;
@@ -919,7 +961,7 @@ function pluginUninstallation(): void
 
 function dbTables(): array
 {
-    $tables_data = [];
+    $tablesData = [];
 
     foreach (TABLES_DATA as $tableName => $tableColumns) {
         foreach ($tableColumns as $fieldName => $fieldData) {
@@ -927,24 +969,24 @@ function dbTables(): array
                 continue;
             }
 
-            $tables_data[$tableName][$fieldName] = dbBuildFieldDefinition($fieldData);
+            $tablesData[$tableName][$fieldName] = dbBuildFieldDefinition($fieldData);
         }
 
         foreach ($tableColumns as $fieldName => $fieldData) {
             if (isset($fieldData['primary_key'])) {
-                $tables_data[$tableName]['primary_key'] = $fieldName;
+                $tablesData[$tableName]['primary_key'] = $fieldName;
             }
 
             if ($fieldName === 'unique_key') {
-                $tables_data[$tableName]['unique_key'] = $fieldData;
+                $tablesData[$tableName]['unique_key'] = $fieldData;
             }
         }
     }
 
-    return $tables_data;
+    return $tablesData;
 }
 
-function dbVerifyTables(): bool
+function dbVerifyTables(): void
 {
     global $db;
 
@@ -981,8 +1023,6 @@ function dbVerifyTables(): bool
     }
 
     dbVerifyIndexes();
-
-    return true;
 }
 
 function dbVerifyIndexes(): bool

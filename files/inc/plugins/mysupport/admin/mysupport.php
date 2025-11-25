@@ -17,7 +17,6 @@
 
 declare(strict_types=1);
 
-use function MySupport\Core\friendlyOpenStatusGet;
 use function MySupport\Core\deniedReasonDelete;
 use function MySupport\Core\deniedReasonGet;
 use function MySupport\Core\deniedReasonInsert;
@@ -34,7 +33,6 @@ use function MySupport\Core\userUpdate;
 
 use const MySupport\Core\CACHE_TYPE_DENIED_REASONS;
 use const MySupport\Core\CACHE_TYPE_PRIORITIES;
-use const MySupport\Core\DATABASE_ROW_TYPE_DENIED_REASON;
 use const MySupport\Core\DATABASE_ROW_TYPE_PRIORITY;
 
 if (!defined('IN_MYBB')) {
@@ -211,7 +209,10 @@ if ($mybb->get_input('action') === 'do_priorities') {
         }
     }
 } elseif ($mybb->get_input('action') === 'support_denial') {
-    $page->add_breadcrumb_item($lang->support_denial, 'index.php?module=config-mysupport&amp;action=support_denial');
+    $page->add_breadcrumb_item(
+        $lang->mySupportDenialReasonsBreadcrumb,
+        'index.php?module=config-mysupport&amp;action=support_denial'
+    );
 
     if ($mybb->get_input('do') === 'edit') {
         $page->output_header($lang->mysupport);
@@ -334,7 +335,10 @@ if ($mybb->get_input('action') === 'do_priorities') {
 
     $page->output_footer();
 } else {
-    $page->add_breadcrumb_item($lang->priorities, 'index.php?module=config-mysupport&amp;action=priorities');
+    $page->add_breadcrumb_item(
+        $lang->mySupportPrioritiesBreadcrumb,
+        'index.php?module=config-mysupport&amp;action=priorities'
+    );
 
     if ($mybb->get_input('do') === 'edit') {
         $page->output_header($lang->mysupport);
@@ -422,64 +426,6 @@ if ($mybb->get_input('action') === 'do_priorities') {
             "index.php?module=config-mysupport&amp;action=do_priorities&amp;do=do_delete&amp;pid={$pid}",
             $lang->priority_delete_confirm . $priority_delete_confirm_count
         );
-    } elseif ($mybb->get_input('do') === 'viewthreads') {
-        $page->output_header($lang->mysupport);
-
-        generate_mysupport_tabs('priorities');
-
-        $table = new Table();
-
-        $pid = $mybb->get_input('pid', MyBB::INPUT_INT);
-
-        $threadsObjects = threadsGet(["priority='{$pid}'"], ['tid', 'subject', 'fid', 'uid', 'username', 'status']);
-
-        $priority_name = priorityGet(
-            ["mid='{$pid}'"],
-            ['name'],
-            ['limit' => 1]
-        )['name'] ?? false;
-
-        if ($threadsObjects) {
-            $table->construct_header($lang->thread);
-            $table->construct_header($lang->forum);
-            $table->construct_header($lang->started_by);
-            $table->construct_header($lang->status);
-
-            foreach ($threadsObjects as $threadID => $thread) {
-                $thread['name'] = get_forum($thread['fid'])['name'] ?? '';
-
-                $thread_link = get_thread_link($thread['tid']);
-                $forum_link = get_forum_link($thread['fid']);
-                $profile_link = build_profile_link($thread['username'], $thread['uid'], '_blank');
-
-                $table->construct_cell(
-                    "<a href=\"{$mybb->settings['bburl']}/{$thread_link}\" target=\"_blank\">" . htmlspecialchars_uni(
-                        $thread['subject']
-                    ) . '</a>',
-                    ['width' => '30%']
-                );
-                $table->construct_cell(
-                    "<a href=\"{$mybb->settings['bburl']}/{$forum_link}\" target=\"_blank\">" . htmlspecialchars_uni(
-                        $thread['name']
-                    ) . '</a>',
-                    ['width' => '30%']
-                );
-                $table->construct_cell($profile_link, ['class' => 'align_center', 'width' => '20%']);
-                $table->construct_cell(
-                    friendlyOpenStatusGet((int)$thread['status']),
-                    ['class' => 'align_center', 'width' => '20%']
-                );
-                $table->construct_row();
-            }
-        } else {
-            $table->construct_cell(
-                $lang->sprintf($lang->priorities_thread_list_none, $priority_name),
-                ['class' => 'align_center']
-            );
-            $table->construct_row();
-        }
-
-        $table->output($lang->sprintf($lang->priorities_thread_list_header, $priority_name));
     } else {
         $page->output_header($lang->mysupport);
 
@@ -492,7 +438,7 @@ if ($mybb->get_input('action') === 'do_priorities') {
         if ($priorityObjects) {
             $table->construct_header($lang->mysupport_name);
             $table->construct_header($lang->mysupport_description);
-            $table->construct_header($lang->controls, ['colspan' => 3, 'class' => 'align_center']);
+            $table->construct_header($lang->controls, ['colspan' => 2, 'class' => 'align_center']);
 
             foreach ($priorityObjects as $priority) {
                 if (!empty($priority['extra'])) {
@@ -509,10 +455,6 @@ if ($mybb->get_input('action') === 'do_priorities') {
                 $table->construct_cell(
                     "<a href=\"index.php?module=config-mysupport&amp;action=priorities&amp;do=delete&amp;pid={$priority['mid']}\">{$lang->delete}</a>",
                     ['class' => 'align_center', 'width' => '15%']
-                );
-                $table->construct_cell(
-                    "<a href=\"index.php?module=config-mysupport&amp;action=priorities&amp;do=viewthreads&amp;pid={$priority['mid']}\">{$lang->mysupport_view_threads}</a>",
-                    ['class' => 'align_center', 'width' => '20%']
                 );
                 $table->construct_row();
             }
@@ -556,15 +498,21 @@ function generate_mysupport_tabs(string $selected): void
     $sub_tabs = [];
 
     $sub_tabs['priorities'] = [
-        'title' => $lang->priorities,
+        'title' => $lang->mySupportPrioritiesTab,
         'link' => 'index.php?module=config-mysupport&amp;action=priorities',
-        'description' => $lang->priorities_nav
+        'description' => $lang->mySupportPrioritiesTabDescription
     ];
 
     $sub_tabs['support_denial'] = [
-        'title' => $lang->support_denial,
+        'title' => $lang->mySupportDenialReasonsTab,
         'link' => 'index.php?module=config-mysupport&amp;action=support_denial',
-        'description' => $lang->support_denial_nav
+        'description' => $lang->mySupportDenialReasonsTabDescription
+    ];
+
+    $sub_tabs['categories'] = [
+        'title' => $lang->mySupportCategoriesTab,
+        'link' => 'index.php?module=config-mysupport&amp;action=categories',
+        'description' => $lang->mySupportCategoriesTabDescription
     ];
 
     $page->output_nav_tabs($sub_tabs, $selected);

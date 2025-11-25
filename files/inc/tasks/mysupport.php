@@ -20,7 +20,7 @@ declare(strict_types=1);
 use MySupport\Core\ThreadStatus;
 
 use function MySupport\Core\settingsGet;
-use function MySupport\Core\threadOpenStatusUpdate;
+use function MySupport\Core\threadSolveStatusUpdate;
 use function MySupport\Core\backupDelete;
 use function MySupport\Core\backupInsert;
 use function MySupport\Core\enabledForums;
@@ -69,7 +69,7 @@ function task_mysupport(array $task): array
             // if there are any threads to mark as solved
             if ($tids) {
                 foreach ($tids as $threadID) {
-                    threadOpenStatusUpdate($threadID, ThreadStatus::Solved);
+                    threadSolveStatusUpdate($threadID, ThreadStatus::Solved);
                 }
 
                 $threads_solved = true;
@@ -208,10 +208,9 @@ function task_mysupport(array $task): array
         add_task_log($task, $task_log);
     }
     /*
-    SELECT `t`.`tid`, `t`.`subject`, `t`.`fid`, `f`.`name`, `t`.`status`, `t`.`statusuid`, `u1`.`username` AS `statusuid_username`, `t`.`statustime`, `t`.`bestanswer`, `t`.`assign`, `u2`.`username` AS `assign_username`, `t`.`assigner_user_id`, `u3`.`username` AS `assignuid_username`, `t`.`priority`, `m`.`name` AS `priority_name`, `t`.`prefix`, `tp`.`prefix` AS `prefix_name`
+    SELECT `t`.`tid`, `t`.`subject`, `t`.`fid`, `f`.`name`, `t`.`status`, `t`.`statusuid`, `u1`.`username` AS `statusuid_username`, `t`.`statustime`, `t`.`bestanswer`, `t`.`assign`, `u2`.`username` AS `assign_username`, `t`.`assigner_user_id`, `u3`.`username` AS `assignuid_username`, `t`.`priority`, `m`.`name` AS `priority_name`, `t`.`mysupport_category_id`
     FROM `mybb_threads` `t`
     LEFT JOIN `mybb_forums` `f` ON `t`.`fid` = `f`.`fid`
-    LEFT JOIN `mybb_threadprefixes` `tp` ON `t`.`prefix` = `tp`.`pid`
     LEFT JOIN `mybb_users` `u1` ON `t`.`statusuid` = `u1`.`uid`
     LEFT JOIN `mybb_users` `u2` ON `t`.`assign` = `u2`.`uid`
     LEFT JOIN `mybb_users` `u3` ON `t`.`assigner_user_id` = `u3`.`uid`

@@ -46,7 +46,7 @@ define('MySupport\Core\ROOT', MYBB_ROOT . 'inc/plugins/mysupport');
 require_once ROOT . '/core.php';
 require_once ROOT . '/url.php';
 
-defined('PLUGINLIBRARY') or define('PLUGINLIBRARY', MYBB_ROOT . 'inc/plugins/pluginlibrary.php');
+defined('PLUGINLIBRARY') || define('PLUGINLIBRARY', MYBB_ROOT . 'inc/plugins/pluginlibrary.php');
 
 // Add our hooks
 if (defined('IN_ADMINCP')) {
@@ -60,6 +60,10 @@ if (defined('IN_ADMINCP')) {
 
     addHooks('MySupport\ForumHooks');
 }
+
+require_once ROOT . '/hooks/shared.php';
+
+addHooks('MySupport\Hooks\Shared');
 
 require ROOT . '/myalerts.php';
 

@@ -58,6 +58,8 @@ $l = [
 
     'mySupportDisplayStatusSolved' => 'Solved',
     'mySupportDisplayStatusNotSolved' => 'Not Solved',
+
+    'mySupportModerationToolPushToGitHubBodyFooter' => 'Forum thread: {1}/{2}',
 ];
 
 $l['mysupport'] = 'MySupport';
@@ -150,6 +152,10 @@ $l['mySupportInlineModerationTechnicalGroup'] = 'Technical status:';
 $l['mySupportInlineModerationOnHoldGroup'] = 'Hold status:';
 $l['mySupportInlineModerationOnHold'] = 'On Hold';
 $l['mySupportInlineModerationNotOnHold'] = 'Off Hold';
+$l['is_support_thread_success'] = 'Thread marked as support thread.';
+$l['is_support_thread_success_multi'] = '{1} thread(s) marked as support thread(s).';
+$l['is_not_support_thread_success'] = 'Thread marked as not support thread.';
+$l['is_not_support_thread_success_multi'] = '{1} thread(s) marked as not support thread(s).';
 $l['hold_on_success'] = 'Thread put on hold.';
 $l['hold_on_success_multi'] = '{1} thread(s) put on hold.';
 $l['hold_off_success'] = 'Thread taken off hold.';
@@ -197,7 +203,8 @@ You can see all of your assigned threads by clicking [url={7}/usercp.php?action=
 
 $l['mySupportInlineModerationPriorityGroup'] = 'Priority:';
 $l['mySupportInlineModerationPriorityNone'] = 'None';
-$l['priority_change_success_to'] = 'Priority changed to {1}.';
+$l['priority_change_success_to'] = 'Priority changed from {1} to {2}.';
+$l['priority_change_success_to_none'] = 'nonehttps://pkproject.net/episodios/latino/serie-ash/temporada-17/episodio-35';
 $l['priority_change_success_to_multi'] = 'Priority of {1} threads(s) changed to {2}.';
 $l['priority_change_success_fromto'] = 'Priority changed from {1} to {2}.';
 $l['priority_remove_success'] = 'Priority of {1} removed.';

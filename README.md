@@ -93,37 +93,54 @@ To display MySupport data, it is required that you edit the following templates 
    template.
 3. Place `<!--MySupportInlineModerationOptions-->` after `{$customthreadtools}` in the
    `search_results_threads_inlinemoderation` template.
-4. Place `{$thread['mySupportStatus']}` before `{$thread['displayprefix']}` in the `showthread` template.
-5. Place `{$thread['mySupportBestAnswerButton']}` before `{$newreply}` in the `showthread` template.
-6. Place `{$thread['mySupportStatus']}` before `{$thread['threadprefix']}` in the `forumdisplay_thread` template.
-7. Place `{$thread['mySupportStatus']}` before `{$thread['threadprefix']}` in the `search_results_threads_thread`
-   template.
-8. Place `{$post['mySupportQuickButtons']}` before `{$post['button_edit']}` in the `postbit` and `postbit_classic`
+4. Place `{$post['mySupportQuickButtons']}` before `{$post['button_edit']}` in the `postbit` and `postbit_classic`
    template to display the thread quick buttons.
-9. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `forumdisplay_thread` template.
-10. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `forumdisplay_thread_rating` template.
-11. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `forumdisplay_thread_modbit` template.
-12. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `search_results_threads_thread` template.
-13. Place `<!--mySupportPriorityClass-->` after `{$bgcolor}` in the `search_results_threads_inlinecheck` template.
-14. Place `{$post['mySupportPriorityClass']}` after `{$unapproved_shade}` in the `postbit` and `postbit_classic`
+5. Place `<!--MySupportPriorityClass-->` after `{$bgcolor}` in the `search_results_threads_inlinecheck` template.
+6. Place `{$post['mySupportPriorityClass']}` after `{$unapproved_shade}` in the `postbit` and `postbit_classic`
+   template.
+7. Place `{$post['mySupportBestAnswerHighlight']}{$post['mySupportStaffHighlight']}` after `post_content` in the
+   `postbit` and `postbit_classic` template.
+8. Place `{$post['mySupportDenySupport']}{$post['mySupportBestAnswer']}` after `{$post['subject_extra']}` in the
+   `postbit` and `postbit_classic` template.
+9. Place `<!--MySupportQuickReplyModerationNotice-->` after `{$moderation_notice}` in the `showthread_quickreply`
+   template.
+10. Place `{$mySupportGlobalNoticeTechnical}` after `{$awaitingusers}` in the `header` template.
+11. Place `{$mySupportGlobalNoticeAssigned}` after `{$awaitingusers}` in the `header` template.
+12. Place `{$mySupportProfileDetails}` after `{$profilefields}` in the `member_profile` template.
+13. Place `{$mySupportModeratorNavigationItems}` after `{$modcp_nav_users}` in the `modcp_nav` template.
+14. Place `<!--MySupportUserPanelNavigation-->` after `{$attachmentop}` in the `usercp_nav_misc` template.
+15. Place `{$thread['mySupportBestAnswerButton']}` before `{$newreply}` in the `showthread` template.
+16. Place
+    `{$thread['mySupportStatus']}{$thread['mySupportAssignedNotice']}{$thread['mySupportBestAnswerNotice']}{$thread['mySupportCategoryFormatted']}`
+    before `{$thread['displayprefix']}` in the `showthread` template.
+17. Place
+    `{$thread['mySupportStatus']}{$thread['mySupportAssignedNotice']}{$thread['mySupportBestAnswerNotice']}{$thread['mySupportCategoryFormatted']}`
+    before `{$thread['displayprefix']}` in the  `forumdisplay_thread` template.
+18. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `forumdisplay_thread` template.
+19. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `forumdisplay_thread_rating` template.
+20. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `forumdisplay_thread_modbit` template.
+21. Place
+    `{$thread['mySupportStatus']}{$thread['mySupportAssignedNotice']}{$thread['mySupportBestAnswerNotice']}{$thread['mySupportCategoryFormatted']}`
+    before `{$thread['threadprefix']}` in the `search_results_threads_thread`
     template.
-15. Place `{$post['mySupportBestAnswerHighlight']}{$post['mySupportStaffHighlight']}` after `post_content` in the
-    `postbit` and `postbit_classic` template.
-16. Place `{$post['mySupportDenySupport']}{$post['mySupportBestAnswer']}` after `{$post['subject_extra']}` in the
-    `postbit` and `postbit_classic` template.
-17. Place `<!--MySupportQuickReplyModerationNotice-->` after `{$moderation_notice}` in the `showthread_quickreply`
-    template.
-18. Place `{$post['mySupportStatus']}` before `{$post['icon']}` in the `postbit` and `postbit_classic` template to
-    display the thread quick buttons.
-19. Place `{$mySupportGlobalNoticeTechnical}` after `{$awaitingusers}` in the `header` template.
-20. Place `{$mySupportGlobalNoticeAssigned}` after `{$awaitingusers}` in the `header` template.
-21. Place `{$thread['mySupportAssignedNotice']}` before `{$prefix}` in the `forumdisplay_thread` template.
-22. Place `{$thread['mySupportAssignedNotice']}` before `{$prefix}` in the `search_results_threads_thread` template.
-23. Place `{$thread['mySupportBestAnswerNotice']}` before `{$prefix}` in the `forumdisplay_thread` template.
-24. Place `{$thread['mySupportBestAnswerNotice']}` before `{$prefix}` in the `search_results_threads_thread` template.
-25. Place `{$mySupportProfileDetails}` after `{$profilefields}` in the `member_profile` template.
-26. Place `{$mySupportModeratorNavigationItems}` after `{$modcp_nav_users}` in the `modcp_nav` template.
-27. Place `<!--MySupportUserPanelNavigation-->` after `{$attachmentop}` in the `usercp_nav_misc` template.
+22. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `search_results_threads_thread` template.
+23. Place `<!--MySupportPriorityClass-->` after `{$bgcolor}` in the `search_results_threads_inlinecheck` template.
+24. Place `<!--MySupportPriorityClass-->` after `{$bgcolor}` in the `search_results_threads_nocheck` template.
+25. Place
+    `{$thread['mySupportStatus']}{$thread['mySupportAssignedNotice']}{$thread['mySupportBestAnswerNotice']}{$thread['mySupportCategoryFormatted']}`
+    before `{$thread['displayprefix']}` in the  `usercp_latest_subscribed_threads` template.
+26. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `usercp_latest_subscribed_threads` template.
+27. Place
+    `{$thread['mySupportStatus']}{$thread['mySupportAssignedNotice']}{$thread['mySupportBestAnswerNotice']}{$thread['mySupportCategoryFormatted']}`
+    before `{$thread['displayprefix']}` in the  `usercp_latest_threads_threads` template.
+28. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `usercp_latest_threads_threads` template.
+29. Place
+    `{$thread['mySupportStatus']}{$thread['mySupportAssignedNotice']}{$thread['mySupportBestAnswerNotice']}{$thread['mySupportCategoryFormatted']}`
+    before `{$thread['threadprefix']}` in the  `usercp_subscriptions_thread` template.
+30. Place `{$thread['mySupportPriorityClass']}` after `{$bgcolor}` in the `usercp_subscriptions_thread` template.
+31. Place
+    `{$thread['mySupportStatus']}{$thread['mySupportAssignedNotice']}{$thread['mySupportBestAnswerNotice']}{$thread['mySupportCategoryFormatted']}`
+    before `{$thread['displaystyle']}` in the  `printthread` template.
 
 [Go up to Table of Contents](#table_of_contents)
 

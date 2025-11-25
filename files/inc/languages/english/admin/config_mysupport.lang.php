@@ -38,21 +38,26 @@ $l['home_nav'] = 'Basic information on MySupport.';
 $l['general'] = 'General';
 $l['general_header'] = 'General Configuration';
 $l['general_nav'] = 'Manage general settings such as which forums to enable MySupport in, and set permissions for usergroups.';
-$l['priorities'] = 'Priorities';
+$l['mySupportPrioritiesTab'] = 'Priorities';
+$l['mySupportPrioritiesBreadcrumb'] = 'Priorities';
 $l['priorities_current'] = 'Current Priorities';
 $l['priorities_header'] = 'Priority Configuration';
 $l['priorities_thread_list_header'] = "Threads with a priority of <em>'{1}'</em>.";
 $l['priorities_add'] = 'Add a Priority';
 $l['priorities_edit'] = 'Edit a Priority';
-$l['priorities_nav'] = 'Manage what priorities you can give to threads.';
-$l['support_denial'] = 'Support Denial';
+$l['mySupportPrioritiesTabDescription'] = 'Manage what priorities you can give to threads.';
+$l['mySupportDenialReasonsTab'] = 'Support Denial';
+$l['mySupportDenialReasonsBreadcrumb'] = 'Support Denial';
 $l['support_denial_header'] = 'Support Denial Configuration';
-$l['support_denial_nav'] = 'Manage reasons for denying support and who is denied support.';
+$l['mySupportDenialReasonsTabDescription'] = 'Manage reasons for denying support and who is denied support.';
 $l['support_denial_reason_current'] = 'Current Reasons';
 $l['support_denial_reason_users'] = 'Users denied support';
 $l['support_denial_reason_add'] = 'Add a reason';
 $l['support_denial_reason_edit'] = 'Edit a reason';
 $l['support_denial_reason_edit_user'] = 'Edit a user';
+
+$l['mySupportCategoriesTab'] = 'Categories';
+$l['mySupportCategoriesTabDescription'] = 'Manage what categories you can give to threads.';
 
 $l['support_threads'] = 'Support Threads Overview';
 $l['support_threads_total'] = '<strong>Total Support Threads:</strong> {1}';
@@ -65,7 +70,6 @@ $l['assigned_threads_total'] = '<strong>Assigned Threads:</strong> {1}';
 $l['assigned_threads_new'] = '<strong>Assigned Threads today:</strong> {1}';
 $l['mysupport_name'] = 'Name';
 $l['mysupport_description'] = 'Description';
-$l['mysupport_view_threads'] = 'View Threads';
 
 $l['mysupport_forums'] = 'Where to enable MySupport?';
 $l['mysupportdenial_forums'] = 'Where to enable MySupport Denial??';
@@ -120,7 +124,6 @@ $l['mysupport_display_style_forced'] = 'Successfully forced the current status d
 $l['mysupport_mod_log_action_0'] = 'Mark as Not Solved';
 $l['mysupport_mod_log_action_1'] = 'Mark as Solved';
 $l['mysupport_mod_log_action_2'] = 'Mark as Technical';
-//$l['mysupport_mod_log_action_3'] = '';
 $l['mysupport_mod_log_action_4'] = 'Mark as Not Technical';
 $l['mysupport_mod_log_action_5'] = 'Add/change assign';
 $l['mysupport_mod_log_action_6'] = 'Remove assign';
@@ -149,7 +152,7 @@ $l['setting_mysupport_displayto_canmasauthor'] = 'Those who can mark as solved a
 $l['setting_mysupport_enablesolvedstatus'] = 'Enable the solved and unsolved feature?';
 $l['setting_mysupport_enablesolvedstatus_desc'] = 'If this is set to Yes, users will be able to mark threads as solved or unsolved.';
 $l['setting_mysupport_closewhensolved'] = 'Close threads when marked as solved?';
-$l['setting_mysupport_closewhensolved_desc'] = 'Should the thread be closed when it is marked as solved? If the thread gets marked as not solved, the thread will be reopened, provided it was closed by marking it as solved.';
+$l['setting_mysupport_closewhensolved_desc'] = 'Should the thread be closed when it is marked as solved? If the thread gets marked as not solved, the thread will be opened back, provided it was closed by marking it as solved.';
 $l['setting_mysupport_closewhensolved_always'] = 'Always';
 $l['setting_mysupport_closewhensolved_option'] = 'Optional';
 $l['setting_mysupport_closewhensolved_never'] = 'Never';
@@ -198,7 +201,7 @@ $l['setting_mysupport_enablenotsupportthread_2'] = 'Enabled - By default, new th
 $l['setting_mysupport_enablesupportdenial'] = 'Enable support denial?';
 $l['setting_mysupport_enablesupportdenial_desc'] = "If set to yes, you will be able to deny support to selected users, meaning they won't be able to make threads in MySupport forums.";
 $l['setting_mysupport_closewhendenied'] = 'Close all support threads when denied support?';
-$l['setting_mysupport_closewhendenied_desc'] = 'This will close all support thread made by a user when you deny them support. If you revoke support denial, all threads that were closed will be reopened, and any threads that were already closed will stay closed.';
+$l['setting_mysupport_closewhendenied_desc'] = 'This will close all support thread made by a user when you deny them support. If you revoke support denial, all threads that were closed will be opened back, and any threads that were already closed will stay closed.';
 $l['setting_mysupport_modlog'] = 'Log moderation entries?';
 $l['setting_mysupport_modlog_desc'] = 'Do you want to log changes to the status of a thread? These will show in the Moderator CP Moderator Logs list.';
 $l['setting_mysupport_modlog_0'] = 'Mark as Not Solved';
@@ -252,6 +255,8 @@ $l['setting_mysupport_pointssystemcolumn'] = 'Custom Points System database colu
 $l['setting_mysupport_pointssystemcolumn_desc'] = 'If you want to use a points system that is not supported in MySupport by default, put the name of the column from the users table which stores the number of points here. if you are unsure what to put here, please contact the author of the points plugin you want to use.';
 $l['setting_mysupport_bestanswerpoints'] = 'Give points to the author of the best answer?';
 $l['setting_mysupport_bestanswerpoints_desc'] = 'How many points do you want to give to the author of the best answer? The same amount of points will be removed should the post be removed as the best answer. Leave blank to give none.';
+$l['setting_mysupport_bestAnswerAllowFirstPost'] = 'Best Answer: Allow First Post';
+$l['setting_mysupport_bestAnswerAllowFirstPost_desc'] = 'If set to yes, users will be able to mark the first post in a thread as the best answer.';
 
 $l['mysupport_usergroups_moderator'] = 'MySupport Moderator Options.';
 $l['mysupport_usergroups_canmarksolved'] = 'Can mark threads as solved or unsolved.';
@@ -264,7 +269,6 @@ $l['mysupport_usergroups_canmanagesupportdenial'] = 'Can manage support denial?'
 $l['mysupport_usergroups_canmarkasnonsupport'] = 'Can mark threads as non-support threads?';
 
 $l['mysupport_forums_mysupport'] = 'Enable MySupport';
-$l['mysupport_forums_mysupportmove'] = 'Allow solved threads to be moved here.';
 $l['mysupport_forums_allowsolvestatus'] = 'Allow threads to be marked as solved or unsolved.';
 $l['mysupport_forums_allowtechnicalstatus'] = 'Allow threads to be marked as technical or not technical.';
 $l['mysupport_forums_mysupportdenial'] = 'Enable support denial in this forum.';
@@ -295,7 +299,7 @@ $l = array_merge([
     'mySupportPrioritiesUrgent' => 'Urgent',
     'mySupportPrioritiesUrgentDescription' => 'Urgent priority threads.',
 
-    'mySupportRebuildAssignmentRows' => 'Rebuild MySupport Assign Legacy Data',
+    'mySupportRebuildAssignmentRows' => 'Rebuild MySupport Assign Legacy Data (Update)',
     'mySupportRebuildAssignmentRowsDescription' => 'When this is run, the MySupport assigned threads legacy data will be converted to the new database scheme.',
     'mySupportRebuildAssignmentRowsSuccess' => 'The assignment legacy data have been rebuilt successfully.',
 
@@ -303,13 +307,41 @@ $l = array_merge([
     'mySupportRebuildAssignmentCountersDescription' => 'When this is run, the MySupport assigned threads counters will be recounted.',
     'mySupportRebuildAssignmentCountersSuccess' => 'The assignment threads count have been recounted successfully.',
 
-    'mySupportRebuildTechnicalRows' => 'Rebuild MySupport Technical Legacy Data',
+    'mySupportRebuildTechnicalRows' => 'Rebuild MySupport Technical Legacy Data (Update)',
     'mySupportRebuildTechnicalRowsDescription' => 'When this is run, the MySupport technical threads legacy data will be converted to the new database scheme.',
     'mySupportRebuildTechnicalRowsSuccess' => 'The technical legacy data have been rebuilt successfully.',
 
     'mySupportRebuildTechnicalCounters' => 'Recount MySupport Technical Counters',
     'mySupportRebuildTechnicalCountersDescription' => 'When this is run, the MySupport technical threads counters will be recounted.',
     'mySupportRebuildTechnicalCountersSuccess' => 'The technical threads count have been recounted successfully.',
+
+    'mySupportModerationToolsSupportStatus' => 'MySupport Status',
+    'mySupportModerationToolsSupportStatusSupport' => 'Support Thread',
+    'mySupportModerationToolsSupportStatusNotSupport' => 'Not Support Thread',
+
+    'mySupportModerationToolsSolveStatus' => 'MySupport Solve Status',
+    'mySupportModerationToolsSolveStatusSolved' => 'Solved',
+    'mySupportModerationToolsSolveStatusNotSolved' => 'Not Solved',
+
+    'mySupportModerationToolsTechnicalStatus' => 'MySupport Technical Status',
+    'mySupportModerationToolsTechnicalStatusTechnical' => 'Technical',
+    'mySupportModerationToolsTechnicalStatusNotTechnical' => 'Not Technical',
+
+    'mySupportModerationToolsOnholdStatus' => 'MySupport Onhold Status',
+    'mySupportModerationToolsOnholdStatusOnhold' => 'Onhold',
+    'mySupportModerationToolsOnholdStatusNotOnhold' => 'Not Onhold',
+
+    'mySupportModerationToolsAssignee' => 'MySupport Assignee',
+    'mySupportModerationToolsAssigneeNobody' => 'Nobody',
+
+    'mySupportModerationToolsPriority' => 'MySupport Priority',
+    'mySupportModerationToolsPriorityNone' => 'None',
+
+    'mySupportModerationToolsCategory' => 'MySupport Category',
+    'mySupportModerationToolsCategoryNone' => 'None',
+
+    'mySupportModerationToolsGitHubIssuePushToken' => 'MySupport GitHub Issue Push Token',
+    'mySupportModerationToolsGitHubIssuePushTokenDescription' => 'If you want to automatically create issues on GitHub when using this custom moderation tool, put your GitHub grained personal access token here.',
 
     'mysupport_pluginlibrary' => 'This plugin requires <a href="{1}">PluginLibrary</a> version {2} or later to be uploaded to your forum.'
 ], $l);
